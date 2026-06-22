@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "net.gravityclient.core.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "TitleScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

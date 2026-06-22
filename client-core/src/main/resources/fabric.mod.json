@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "gravity-client-core",
+  "name": "Gravity Client Core",
+  "version": "${version}",
+  "description": "Legitimate client-side companion mod providing custom branding, keybind hooks, and local configuration synchronization for GravityClient.",
+  "authors": [
+    "Gravity Team"
+  ],
+  "contact": {
+    "homepage": "https://github.com/linussztuka2011/GravityClient",
+    "sources": "https://github.com/linussztuka2011/GravityClient"
+  },
+  "license": "MIT",
+  "icon": "assets/gravity-client-core/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.gravityclient.core.ClientCoreMod"
+    ]
+  },
+  "mixins": [
+    "gravity-client-core.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "minecraft": "~1.21",
+    "fabric-api": "*"
+  }
+}
