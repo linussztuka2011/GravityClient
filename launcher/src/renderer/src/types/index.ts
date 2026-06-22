@@ -75,9 +75,33 @@ export interface TaskStatus {
   logs: LogEntry[];
 }
 
+export interface GlobalSettings {
+  ram: string;
+  customJava: string;
+  debugMode: boolean;
+  activeProfileId: string;
+  activeSkin: string;
+  enabledMods: string[];
+  meteorEnabled: boolean;
+  fpsSettings: {
+    position: string;
+    color: string;
+    textColorToggle: boolean;
+    background: string;
+    backgroundToggle: boolean;
+    opacity: number;
+    fontSize: number;
+    showAverage: boolean;
+  };
+  accounts: string[];
+  activeAccount: string;
+}
+
 declare global {
   interface Window {
     gravityAPI: {
+      getSettings(): Promise<GlobalSettings>;
+      saveSettings(settings: GlobalSettings): Promise<boolean>;
       getInstances(): Promise<InstanceConfig[]>;
       createInstance(name: string, mcVersion: string): Promise<InstanceConfig>;
       updateInstance(config: InstanceConfig): Promise<boolean>;

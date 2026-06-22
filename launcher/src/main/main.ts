@@ -2,9 +2,11 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { InstanceService } from './services/instanceService.js';
+import { SettingsService } from './services/settingsService.js';
 import { PackInstaller } from './services/packInstaller.js';
 import { ConfigPresetService } from './services/configPresetService.js';
 import { MinecraftPaths } from './services/minecraftPaths.js';
+import { LaunchService } from './services/launchService.js';
 
 // Resolve directory name for ESM stability
 const __filename = fileURLToPath(import.meta.url);
@@ -65,6 +67,16 @@ app.on('window-all-closed', () => {
 });
 
 function setupIpcHandlers() {
+  // Global settings
+  ipcMain.handle('get-settings', () => {
+    return SettingsService.getSettings();
+  });
+
+  ipcMain.handle('save-settings', (_event, settings) => {
+    SettingsService.saveSettings(settings);
+    return true;
+  });
+
   // Profiles list
   ipcMain.handle('get-instances', () => {
     return InstanceService.getInstances();
@@ -132,13 +144,18 @@ function setupIpcHandlers() {
     }
   });
 
-  // Launch Minecraft Simulation
-  ipcMain.handle('launch-game', (_event, instanceId: string) => {
-    console.log(`Spawning simulation for Minecraft instance: ${instanceId}`);
-    return {
-      success: true,
-      message: `Minecraft instance ${instanceId} spawned successfully in background!`
-    };
+  // Launch Minecraft Client
+  ipcMain.handle('launch-game', async (_event, instanceId: string) => {
+    try {
+      const result = await LaunchService.launch(instanceId);
+      return result;
+    } catch (err: any) {
+      console.error('Launch execution failed:', err);
+      return {
+        success: false,
+        message: `Execution failed: ${err.message}`
+      };
+    }
   });
 }
 

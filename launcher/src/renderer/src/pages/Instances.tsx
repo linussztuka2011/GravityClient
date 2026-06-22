@@ -11,6 +11,7 @@ interface InstancesProps {
   onDeleteInstance: (id: string) => void;
   onInstall: (instance: InstanceConfig) => void;
   onLaunch: (id: string) => void;
+  onBack: () => void;
 }
 
 export const Instances: React.FC<InstancesProps> = ({
@@ -23,6 +24,7 @@ export const Instances: React.FC<InstancesProps> = ({
   onDeleteInstance,
   onInstall,
   onLaunch,
+  onBack,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
@@ -62,8 +64,17 @@ export const Instances: React.FC<InstancesProps> = ({
       {/* Sidebar: Profiles List */}
       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>My Profiles</h3>
-          <button className="glow-btn" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => setShowCreateModal(true)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              className="pill-btn" 
+              style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '100px' }} 
+              onClick={onBack}
+            >
+              &larr; Back
+            </button>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>My Profiles</h3>
+          </div>
+          <button className="pill-btn" style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '100px' }} onClick={() => setShowCreateModal(true)}>
             + NEW
           </button>
         </div>
@@ -114,16 +125,22 @@ export const Instances: React.FC<InstancesProps> = ({
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button className="glow-btn" style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)' }} onClick={() => onDeleteInstance(activeInstance.id)}>
+                <button className="pill-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'rgba(255,74,90,0.4)', color: 'var(--color-error)' }} onClick={() => onDeleteInstance(activeInstance.id)}>
                   Delete
                 </button>
-                <button className="glow-btn" onClick={() => onInstall(activeInstance)}>
+                <button className="pill-btn" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => onInstall(activeInstance)}>
                   Sync & Install
                 </button>
                 <button
-                  className="glow-btn filled"
+                  className="pill-btn primary"
                   disabled={!activeInstance.installedPackVersion}
-                  style={{ opacity: activeInstance.installedPackVersion ? 1 : 0.5, cursor: activeInstance.installedPackVersion ? 'pointer' : 'not-allowed' }}
+                  style={{
+                    padding: '8px 20px',
+                    fontSize: '0.85rem',
+                    borderRadius: '100px',
+                    opacity: activeInstance.installedPackVersion ? 1 : 0.5,
+                    cursor: activeInstance.installedPackVersion ? 'pointer' : 'not-allowed',
+                  }}
                   onClick={() => onLaunch(activeInstance.id)}
                 >
                   {activeInstance.installedPackVersion ? 'Launch Client' : 'Install Required First'}
@@ -263,10 +280,10 @@ export const Instances: React.FC<InstancesProps> = ({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button type="button" className="glow-btn" onClick={() => setShowCreateModal(false)}>
+              <button type="button" className="pill-btn" style={{ padding: '8px 18px', fontSize: '0.85rem' }} onClick={() => setShowCreateModal(false)}>
                 Cancel
               </button>
-              <button type="submit" className="glow-btn filled">
+              <button type="submit" className="pill-btn primary" style={{ padding: '8px 18px', fontSize: '0.85rem', borderRadius: '100px' }}>
                 Create
               </button>
             </div>

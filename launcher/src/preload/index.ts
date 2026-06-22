@@ -1,6 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('gravityAPI', {
+  // Global settings
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
+
   // Profiles management
   getInstances: () => ipcRenderer.invoke('get-instances'),
   createInstance: (name: string, mcVersion: string) => ipcRenderer.invoke('create-instance', name, mcVersion),

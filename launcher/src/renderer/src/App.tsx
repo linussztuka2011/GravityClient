@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout.js';
 import { Dashboard } from './pages/Dashboard.js';
-import { Instances } from './pages/Instances.js';
 import { TasksView } from './pages/TasksView.js';
 import { Settings } from './pages/Settings.js';
-import { InstanceConfig, PackManifest, TaskStatus, LogEntry } from './types/index.js';
+import { SkinMenu } from './pages/SkinMenu.js';
+import { ModMenu } from './pages/ModMenu.js';
+import { FPSSettings } from './pages/FPSSettings.js';
+import { AccountLogin } from './pages/AccountLogin.js';
+import { Singleplayer } from './pages/Singleplayer.js';
+import { Multiplayer } from './pages/Multiplayer.js';
+import { Instances } from './pages/Instances.js';
+import { InstanceConfig, PackManifest, TaskStatus, LogEntry, GlobalSettings } from './types/index.js';
+
+const DEFAULT_SETTINGS: GlobalSettings = {
+  ram: '4G',
+  customJava: '',
+  debugMode: false,
+  activeProfileId: '',
+  activeSkin: 'Steve',
+  enabledMods: ['FPS Counter', 'Ping Display', 'ToggleSprint/Sneak', 'Direction HUD', 'Armor Status'],
+  fpsSettings: {
+    position: 'Top Left',
+    color: '#FFFFFF',
+    textColorToggle: true,
+    background: '#000000',
+    backgroundToggle: true,
+    opacity: 50,
+    fontSize: 14,
+    showAverage: true,
+  },
+  accounts: ['Player_Name'],
+  activeAccount: 'Player_Name',
+};
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -12,6 +39,9 @@ export const App: React.FC = () => {
   const [activeInstance, setActiveInstance] = useState<InstanceConfig | null>(null);
   const [packManifest, setPackManifest] = useState<PackManifest | null>(null);
   
+  // Settings state loaded from backend
+  const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
+
   // Terminal tracking
   const [taskStatus, setTaskStatus] = useState<TaskStatus>({
     active: false,
@@ -20,10 +50,16 @@ export const App: React.FC = () => {
     logs: [],
   });
 
-  // Load instances & manifest on startup
+  // Load settings, instances & manifest on startup
   useEffect(() => {
     const initData = async () => {
       try {
+        // Load settings from IPC
+        const loadedSettings = await window.gravityAPI.getSettings();
+        if (loadedSettings) {
+          setSettings(loadedSettings);
+        }
+
         const loadedInstances = await window.gravityAPI.getInstances();
         setInstances(loadedInstances);
         if (loadedInstances.length > 0) {
@@ -38,6 +74,16 @@ export const App: React.FC = () => {
     };
     initData();
   }, []);
+
+  // Save settings callback
+  const handleSaveSettings = async (updatedSettings: GlobalSettings) => {
+    try {
+      setSettings(updatedSettings);
+      await window.gravityAPI.saveSettings(updatedSettings);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    }
+  };
 
   // Creation callback
   const handleCreateInstance = async (name: string, mcVersion: string) => {
@@ -181,12 +227,26 @@ export const App: React.FC = () => {
   };
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+    <Layout>
       {activeTab === 'dashboard' && (
         <Dashboard
           instances={instances}
+          settings={settings}
           setActiveTab={setActiveTab}
           onLaunch={handleLaunchGame}
+          onCreateInstance={handleCreateInstance}
+          onUpdateInstance={handleUpdateInstance}
+          onDeleteInstance={handleDeleteInstance}
+          onInstall={handleInstallPack}
+          packManifest={packManifest}
+        />
+      )}
+
+      {activeTab === 'settings' && (
+        <Settings
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onNavigateToTab={setActiveTab}
         />
       )}
 
@@ -201,6 +261,57 @@ export const App: React.FC = () => {
           onDeleteInstance={handleDeleteInstance}
           onInstall={handleInstallPack}
           onLaunch={handleLaunchGame}
+          onBack={() => setActiveTab('dashboard')}
+        />
+      )}
+
+      {activeTab === 'skin_menu' && (
+        <SkinMenu
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onBack={() => setActiveTab('dashboard')}
+          onNavigateToSettingsProfiles={() => setActiveTab('instances')}
+        />
+      )}
+
+      {activeTab === 'mod_menu' && (
+        <ModMenu
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onBack={() => setActiveTab('settings')}
+          onNavigateToFPSSettings={() => setActiveTab('fps_settings')}
+          onNavigateToSettingsProfiles={() => setActiveTab('instances')}
+        />
+      )}
+
+      {activeTab === 'fps_settings' && (
+        <FPSSettings
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onBack={() => setActiveTab('mod_menu')}
+          onNavigateToSettingsProfiles={() => setActiveTab('instances')}
+        />
+      )}
+
+      {activeTab === 'account_login' && (
+        <AccountLogin
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onBack={() => setActiveTab('settings')}
+        />
+      )}
+
+      {activeTab === 'singleplayer' && (
+        <Singleplayer
+          onBack={() => setActiveTab('dashboard')}
+          onLaunch={handleLaunchGame}
+        />
+      )}
+
+      {activeTab === 'multiplayer' && (
+        <Multiplayer
+          onBack={() => setActiveTab('dashboard')}
+          onLaunch={handleLaunchGame}
         />
       )}
 
@@ -210,9 +321,8 @@ export const App: React.FC = () => {
           instanceName={instances.find((i) => i.id === activeInstance?.id)?.name}
         />
       )}
-
-      {activeTab === 'settings' && <Settings />}
     </Layout>
   );
 };
+
 export default App;

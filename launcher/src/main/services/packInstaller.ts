@@ -112,7 +112,8 @@ export class PackInstaller {
     const loaderOk = await FabricInstaller.installLoader(
       instance.id,
       manifest.modLoaderVersion.replace(/[^0-9.]/g, ''), // strip helper symbols
-      (msg, lvl) => log(msg, lvl || 'info')
+      manifest.minecraftVersion || '1.21',
+      (msg: string, lvl?: 'info' | 'warn' | 'error') => log(msg, lvl || 'info')
     );
     if (!loaderOk) {
       return false;

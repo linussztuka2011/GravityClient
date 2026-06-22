@@ -1,86 +1,295 @@
 import React, { useState } from 'react';
+import { GlobalSettings } from '../types/index.js';
 
-export const Settings: React.FC = () => {
-  const [ram, setRam] = useState('4G');
-  const [debugMode, setDebugMode] = useState(false);
-  const [customJava, setCustomJava] = useState('');
+interface SettingsProps {
+  settings: GlobalSettings;
+  onSaveSettings: (settings: GlobalSettings) => void;
+  onNavigateToTab: (tab: string) => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({
+  settings,
+  onSaveSettings,
+  onNavigateToTab,
+}) => {
+  // Modal toggles
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // States for sub-menus
+  const [ram, setRam] = useState<string>(settings.ram || '4G');
+  const [customJava, setCustomJava] = useState<string>(settings.customJava || '');
+  const [debugMode, setDebugMode] = useState<boolean>(settings.debugMode || false);
+
+  // Simulated Video state
+  const [renderDistance, setRenderDistance] = useState<number>(12);
+  const [vsync, setVsync] = useState<boolean>(true);
+
+  // Simulated Audio state
+  const [masterVolume, setMasterVolume] = useState<number>(80);
+  const [musicVolume, setMusicVolume] = useState<number>(50);
+
+  // Save specific states back to parent settings
+  const handleSaveSubState = (updates: Partial<GlobalSettings>) => {
+    const updated = {
+      ...settings,
+      ...updates,
+    };
+    onSaveSettings(updated);
+  };
+
+  const handleRamChange = (newRam: string) => {
+    setRam(newRam);
+    handleSaveSubState({ ram: newRam });
+  };
+
+  const handleJavaChange = (newJava: string) => {
+    setCustomJava(newJava);
+    handleSaveSubState({ customJava: newJava });
+  };
+
+  const handleDebugToggle = () => {
+    const nextVal = !debugMode;
+    setDebugMode(nextVal);
+    handleSaveSubState({ debugMode: nextVal });
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      <header>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 700 }} className="cyan-gradient-text">Global Launcher Settings</h2>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Configure Java virtual machine targets and platform execution policies.</p>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px', height: '100%', maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+      
+      <header style={{ textAlign: 'center', marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 700, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>GravityClient</h2>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '1.2rem', marginTop: '4px', fontWeight: 500 }}>Settings Dashboard</p>
       </header>
 
-      <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>Java Runtime Environment</h3>
-        
-        {/* Memory Allocation */}
-        <div className="form-group">
-          <label>Memory Allocation (Maximum RAM)</label>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>Higher allocation prevents stuttering but uses more host memory.</p>
-          <select className="form-control form-select" style={{ maxWidth: '300px' }} value={ram} onChange={(e) => setRam(e.target.value)}>
-            <option value="2G">2 GB (Minimum)</option>
-            <option value="4G">4 GB (Recommended)</option>
-            <option value="6G">6 GB (Heavy Shaders)</option>
-            <option value="8G">8 GB (Enthusiast)</option>
-          </select>
-        </div>
-
-        {/* Custom Executable */}
-        <div className="form-group">
-          <label>Custom Java Path (JDK 21 required)</label>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Default system JVM (auto-resolved)"
-            value={customJava}
-            onChange={(e) => setCustomJava(e.target.value)}
-          />
-        </div>
+      {/* 3x3 Grid Matching IMG_2758.png */}
+      <div className="settings-grid">
+        <button className="settings-grid-btn" onClick={() => setActiveModal('accessibility')}>
+          Accessibility
+        </button>
+        <button className="settings-grid-btn" onClick={() => onNavigateToTab('mod_menu')}>
+          Mod-Menu
+        </button>
+        <button className="settings-grid-btn" onClick={() => setActiveModal('antigravity')}>
+          {settings.meteorEnabled ? 'Gravity' : 'Antigravity'}
+        </button>
+        <button className="settings-grid-btn" onClick={() => setActiveModal('video_settings')}>
+          Video-Settings
+        </button>
+        <button className="settings-grid-btn" onClick={() => onNavigateToTab('account_login')}>
+          Account
+        </button>
+        <button className="settings-grid-btn" onClick={() => setActiveModal('audio_settings')}>
+          Audio-Settings
+        </button>
+        <button className="settings-grid-btn" onClick={() => setActiveModal('credits')}>
+          Credits
+        </button>
+        <button className="settings-grid-btn" onClick={() => onNavigateToTab('dashboard')}>
+          Back
+        </button>
+        <button className="settings-grid-btn" onClick={() => setActiveModal('import_settings')}>
+          Import
+        </button>
       </div>
 
-      <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>Advanced Developer Options</h3>
-        
-        {/* Debug Console Toggles */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 600 }}>Enable Verbose Logs</h4>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>Streams detailed Modrinth request loops and local file delta listings.</p>
+      {/* MODALS FOR EACH SELECTION */}
+      
+      {/* Accessibility Modal */}
+      {activeModal === 'accessibility' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Accessibility Options</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Text-To-Speech Narrator</span>
+                <div className="toggle-switch"><div className="toggle-switch-handle" /></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>High Contrast Interface</span>
+                <div className="toggle-switch"><div className="toggle-switch-handle" /></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Subtitles Display</span>
+                <div className="toggle-switch active"><div className="toggle-switch-handle" /></div>
+              </div>
+            </div>
+            <button className="pill-btn primary" style={{ marginTop: '12px' }} onClick={() => setActiveModal(null)}>Close</button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.8rem', color: debugMode ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
-              {debugMode ? 'ACTIVE' : 'OFF'}
-            </span>
-            <div
-              onClick={() => setDebugMode(!debugMode)}
-              style={{
-                width: '40px',
-                height: '20px',
-                borderRadius: '10px',
-                background: debugMode ? 'var(--color-accent-dim)' : 'var(--color-bg-tertiary)',
-                position: 'relative',
-                transition: 'background 0.2s',
-                cursor: 'pointer'
-              }}
-            >
-              <div
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  background: debugMode ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                  position: 'absolute',
-                  top: '2px',
-                  left: debugMode ? '22px' : '2px',
-                  transition: 'left 0.2s',
-                }}
+        </div>
+      )}
+
+      {/* Antigravity Modal (Easter Egg + Developer Settings) */}
+      {activeModal === 'antigravity' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="cyan-gradient-text">✦ Antigravity Engine ✦</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+              Antigravity provides zero-latency client-side thread virtualization and smart chunk-loading heuristics. Configured by Google DeepMind's Advanced Agentic Coding team.
+            </p>
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Activate Meteor Client</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Injects Meteor Client (utility mod) into client container mods folder.</p>
+                </div>
+                <div className={`toggle-switch ${settings.meteorEnabled ? 'active' : ''}`} onClick={() => handleSaveSubState({ meteorEnabled: !settings.meteorEnabled })}>
+                  <div className="toggle-switch-handle" />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Verbose Debug Logs</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Streams API pull operations to terminal logs.</p>
+                </div>
+                <div className={`toggle-switch ${debugMode ? 'active' : ''}`} onClick={handleDebugToggle}>
+                  <div className="toggle-switch-handle" />
+                </div>
+              </div>
+            </div>
+            <button className="pill-btn primary" style={{ marginTop: '12px' }} onClick={() => setActiveModal(null)}>Back to Settings</button>
+          </div>
+        </div>
+      )}
+
+      {/* Video-Settings & JRE ALLOCATION Modal */}
+      {activeModal === 'video_settings' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Video & JRE Settings</h3>
+            
+            {/* RAM Allocation */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Memory Allocation (Maximum RAM)</label>
+              <select className="form-control form-select" value={ram} onChange={(e) => handleRamChange(e.target.value)}>
+                <option value="2G">2 GB (Minimum)</option>
+                <option value="4G">4 GB (Recommended)</option>
+                <option value="6G">6 GB (Heavy Shaders)</option>
+                <option value="8G">8 GB (Enthusiast)</option>
+                <option value="12G">12 GB (Uncapped)</option>
+              </select>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>
+                Assign dedicated host RAM directly into JVM launch parameters.
+              </p>
+            </div>
+
+            {/* Custom Java executable */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Custom Java Path (JDK 21 required)</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Default system JVM (auto-resolved)"
+                value={customJava}
+                onChange={(e) => handleJavaChange(e.target.value)}
               />
             </div>
+
+            {/* Render Distance Slider */}
+            <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: '16px', marginBottom: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label>Render Distance</label>
+                <input
+                  type="range"
+                  min="2"
+                  max="32"
+                  value={renderDistance}
+                  onChange={(e) => setRenderDistance(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--color-accent)' }}
+                />
+              </div>
+              <span style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', width: '50px', textAlign: 'right', marginTop: '18px' }}>{renderDistance} Chunks</span>
+            </div>
+
+            {/* VSync toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>VSync (Frame Sync Lock)</span>
+              <div className={`toggle-switch ${vsync ? 'active' : ''}`} onClick={() => setVsync(!vsync)}>
+                <div className="toggle-switch-handle" />
+              </div>
+            </div>
+
+            <button className="pill-btn primary" style={{ marginTop: '12px' }} onClick={() => setActiveModal(null)}>Save & Exit</button>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Audio-Settings Modal */}
+      {activeModal === 'audio_settings' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Audio Settings</h3>
+            
+            {/* Master Volume */}
+            <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: '16px', marginBottom: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label>Master Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={masterVolume}
+                  onChange={(e) => setMasterVolume(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--color-accent)' }}
+                />
+              </div>
+              <span style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', width: '50px', textAlign: 'right', marginTop: '18px' }}>{masterVolume}%</span>
+            </div>
+
+            {/* Music Volume */}
+            <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: '16px', marginBottom: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label>Music Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={musicVolume}
+                  onChange={(e) => setMusicVolume(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--color-accent)' }}
+                />
+              </div>
+              <span style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', width: '50px', textAlign: 'right', marginTop: '18px' }}>{musicVolume}%</span>
+            </div>
+
+            <button className="pill-btn primary" style={{ marginTop: '12px' }} onClick={() => setActiveModal(null)}>Save & Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Credits Modal */}
+      {activeModal === 'credits' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }} className="cyan-gradient-text">Ecosystem Credits</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.95rem', color: 'var(--color-text-secondary)', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px' }}>
+              <div><strong>Launcher Engine:</strong> Gravity Launcher TS</div>
+              <div><strong>Core Graphics:</strong> Sunset Glassmorphic Suite</div>
+              <div><strong>Developer:</strong> Antigravity AI</div>
+              <div><strong>Sponsor:</strong> Google DeepMind Advanced Agentic Coding</div>
+              <div><strong>Ecosystem Version:</strong> v1.0.0-PRO</div>
+            </div>
+            <button className="pill-btn primary" onClick={() => setActiveModal(null)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Import Settings Modal */}
+      {activeModal === 'import_settings' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Import Configuration</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+              Select a JSON settings configuration backup file to import settings instantly.
+            </p>
+            <button className="pill-btn" style={{ padding: '12px' }} onClick={() => alert('Backup import action selected. Simulating import...')}>
+              Select JSON file from computer...
+            </button>
+            <button className="pill-btn primary" onClick={() => setActiveModal(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -13,6 +13,7 @@
     "electron:dev": "electron . --no-sandbox"
   },
   "dependencies": {
+    "minecraft-launcher-core": "^3.18.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
