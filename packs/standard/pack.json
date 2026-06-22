@@ -1,0 +1,339 @@
+{
+  "id": "gravity-standard-pack",
+  "name": "Gravity Standard Optimizations",
+  "version": "1.0.0",
+  "minecraftVersion": "1.21",
+  "modLoader": "fabric",
+  "modLoaderVersion": ">=0.15.11",
+  "requiredMods": [
+    {
+      "id": "fabric-api",
+      "name": "Fabric API",
+      "description": "Core API library for the Fabric toolchain, required by most mods.",
+      "modrinth": {
+        "projectId": "P7C9S38A",
+        "slug": "fabric-api",
+        "versionConstraint": "^0.100.0"
+      },
+      "hashes": {
+        "sha1": "713ba245df9e4a3f124581c7fde92d83ab945a2c"
+      },
+      "license": {
+        "name": "Apache-2.0",
+        "url": "https://github.com/FabricMC/fabric/blob/1.21/LICENSE"
+      },
+      "attribution": "FabricMC Team"
+    },
+    {
+      "id": "cloth-config",
+      "name": "Cloth Config API",
+      "description": "Configuration API library required by many client UI mods.",
+      "modrinth": {
+        "projectId": "9s6t2o1L",
+        "slug": "cloth-config",
+        "versionConstraint": "^15.0.127"
+      },
+      "hashes": {
+        "sha1": "6c4578bdf1298cde3e5b38779ca2e4c029cd781a"
+      },
+      "license": {
+        "name": "LGPL-3.0-only",
+        "url": "https://github.com/shedaniel/cloth-config/blob/main/LICENSE"
+      },
+      "attribution": "shedaniel"
+    },
+    {
+      "id": "modmenu",
+      "name": "Mod Menu",
+      "description": "Adds a screen to view and configure installed mods.",
+      "modrinth": {
+        "projectId": "mOgS1gSp",
+        "slug": "modmenu",
+        "versionConstraint": "^11.0.0"
+      },
+      "hashes": {
+        "sha1": "da66e01be7a13c9e99a778848d7be639bc8a36ef"
+      },
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/TerraformersMC/ModMenu/blob/master/LICENSE"
+      },
+      "attribution": "TerraformersMC"
+    }
+  ],
+  "optionalGroups": [
+    {
+      "id": "performance",
+      "name": "Performance Enhancements",
+      "description": "Essential optimizations for high FPS, reduced memory usage, and stutter-free gameplay.",
+      "defaultEnabled": true,
+      "mods": [
+        {
+          "id": "sodium",
+          "name": "Sodium",
+          "description": "Modern rendering engine that greatly improves frame rates and reduces micro-stutter.",
+          "modrinth": {
+            "projectId": "AANobbMI",
+            "slug": "sodium",
+            "versionConstraint": "^0.5.11"
+          },
+          "hashes": {
+            "sha1": "893c8dfa891beee98276f7cde1a029ab0bca23cd"
+          },
+          "license": {
+            "name": "LGPL-3.0",
+            "url": "https://github.com/CaffeineMC/sodium-fabric/blob/main/LICENSE.md"
+          },
+          "attribution": "CaffeineMC Team"
+        },
+        {
+          "id": "lithium",
+          "name": "Lithium",
+          "description": "General-purpose physics, chunk-loading, and entity AI optimization mod.",
+          "modrinth": {
+            "projectId": "gvQrSTne",
+            "slug": "lithium",
+            "versionConstraint": "^0.12.7"
+          },
+          "hashes": {
+            "sha1": "fc8de01be7a23c3e39a77ee48d7be639bc8a42ef"
+          },
+          "license": {
+            "name": "LGPL-3.0",
+            "url": "https://github.com/CaffeineMC/lithium-fabric/blob/master/LICENSE.md"
+          },
+          "attribution": "CaffeineMC Team"
+        },
+        {
+          "id": "ferritecore",
+          "name": "FerriteCore",
+          "description": "Reduces RAM usage significantly by optimizing Minecraft's data structures.",
+          "modrinth": {
+            "projectId": "u6387gHe",
+            "slug": "ferritecore",
+            "versionConstraint": "^7.0.0"
+          },
+          "hashes": {
+            "sha1": "3a6ef02bdfe42a3bcfe4a23b93478e121ba48c5a"
+          },
+          "license": {
+            "name": "MIT",
+            "url": "https://github.com/malte0811/FerriteCore/blob/1.21/LICENSE"
+          },
+          "attribution": "malte0811"
+        },
+        {
+          "id": "immediatelyfast",
+          "name": "ImmediatelyFast",
+          "description": "Optimizes text, HUD, and immediate-mode rendering for an extra performance boost.",
+          "modrinth": {
+            "projectId": "5b6Z77S8",
+            "slug": "immediatelyfast",
+            "versionConstraint": "^1.2.18"
+          },
+          "hashes": {
+            "sha1": "22ff0678ab3de3fe4c2b9a77ce48d7be639bc8fe"
+          },
+          "license": {
+            "name": "LGPL-3.0",
+            "url": "https://github.com/RaphiMC/ImmediatelyFast/blob/main/LICENSE"
+          },
+          "attribution": "RaphiMC"
+        },
+        {
+          "id": "entityculling",
+          "name": "EntityCulling",
+          "description": "Uses async raytracing to skip rendering hidden entities behind solid blocks.",
+          "modrinth": {
+            "projectId": "N08EZArx",
+            "slug": "entityculling",
+            "versionConstraint": "^1.6.6"
+          },
+          "hashes": {
+            "sha1": "9a7bcfae8912ef09ee88de01b2a09ff13ea887cf"
+          },
+          "license": {
+            "name": "MIT",
+            "url": "https://github.com/tr7zw/EntityCulling/blob/master/LICENSE"
+          },
+          "attribution": "tr7zw"
+        }
+      ]
+    },
+    {
+      "id": "minimap",
+      "name": "Minimap & Navigation",
+      "description": "In-game maps and coordinate pointers for efficient exploration.",
+      "defaultEnabled": false,
+      "mods": [
+        {
+          "id": "xaeros-minimap",
+          "name": "Xaero's Minimap",
+          "description": "Provides a customizable, rotatable mini-map hud.",
+          "modrinth": {
+            "projectId": "v779v72x",
+            "slug": "xaeros-minimap",
+            "versionConstraint": "^24.2.0"
+          },
+          "hashes": {
+            "sha1": "33ffabcf2291eaef783b9cde183c7de92da83bfd"
+          },
+          "license": {
+            "name": "Custom/Proprietary",
+            "url": "https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap"
+          },
+          "attribution": "Xaero"
+        },
+        {
+          "id": "xaeros-worldmap",
+          "name": "Xaero's World Map",
+          "description": "Adds a full-screen, self-generating interactive world map overlay.",
+          "modrinth": {
+            "projectId": "1S4qU5z2",
+            "slug": "xaeros-worldmap",
+            "versionConstraint": "^1.38.8"
+          },
+          "hashes": {
+            "sha1": "b96ef0e129de4a7cfee9ba3a7bdaef29cd31bf9e"
+          },
+          "license": {
+            "name": "Custom/Proprietary",
+            "url": "https://www.curseforge.com/minecraft/mc-mods/xaeros-world-map"
+          },
+          "attribution": "Xaero"
+        }
+      ]
+    },
+    {
+      "id": "visual",
+      "name": "Visual Upgrades",
+      "description": "Adds custom shaders support and dynamic zoom.",
+      "defaultEnabled": false,
+      "mods": [
+        {
+          "id": "iris",
+          "name": "Iris Shaders",
+          "description": "High-performance shaders mod compatible with standard Optifine shaderpacks.",
+          "modrinth": {
+            "projectId": "ylS64VAs",
+            "slug": "iris",
+            "versionConstraint": "^1.7.2"
+          },
+          "hashes": {
+            "sha1": "dae88ff281aa0cf09ea77ee48d7be639bc8aeef0"
+          },
+          "license": {
+            "name": "LGPL-3.0",
+            "url": "https://github.com/IrisShaders/Iris/blob/trunk/LICENSE"
+          },
+          "attribution": "IrisShaders Team"
+        },
+        {
+          "id": "zoomify",
+          "name": "Zoomify",
+          "description": "A highly customizable smooth zoom mod with advanced customization curves.",
+          "modrinth": {
+            "projectId": "192Z3F4X",
+            "slug": "zoomify",
+            "versionConstraint": "^2.14.0"
+          },
+          "hashes": {
+            "sha1": "3bcfe4a23b93478e121ba48c5a2c3a6ef02bdfe42a"
+          },
+          "license": {
+            "name": "LGPL-3.0",
+            "url": "https://github.com/isXander/Zoomify/blob/main/LICENSE"
+          },
+          "attribution": "isXander"
+        }
+      ]
+    },
+    {
+      "id": "hud-qol",
+      "name": "HUD & Quality of Life",
+      "description": "Visual feedback indicators for food, coordinates, and system stats.",
+      "defaultEnabled": true,
+      "mods": [
+        {
+          "id": "appleskin",
+          "name": "AppleSkin",
+          "description": "Displays food hunger and saturation values directly on the HUD.",
+          "modrinth": {
+            "projectId": "EdYvF379",
+            "slug": "appleskin",
+            "versionConstraint": "^3.0.0"
+          },
+          "hashes": {
+            "sha1": "01bcfe4a23b93478e121ba48c5a2c3a6ef02bdfe"
+          },
+          "license": {
+            "name": "MIT",
+            "url": "https://github.com/squeek502/AppleSkin/blob/master/LICENSE"
+          },
+          "attribution": "squeek502"
+        },
+        {
+          "id": "betterf3",
+          "name": "BetterF3",
+          "description": "Replaces the cluttered debug F3 screen with a clean, color-coded custom layout.",
+          "modrinth": {
+            "projectId": "8m1Sg5o5",
+            "slug": "betterf3",
+            "versionConstraint": "^11.0.1"
+          },
+          "hashes": {
+            "sha1": "fde29da2d3be3fe4c2b9a77ce48d7be639bc8aef"
+          },
+          "license": {
+            "name": "MIT",
+            "url": "https://github.com/Sylvver/BetterF3/blob/main/LICENSE"
+          },
+          "attribution": "Sylvver"
+        }
+      ]
+    },
+    {
+      "id": "utility",
+      "name": "Utility Extras",
+      "description": "Minor client tool improvements and item previews.",
+      "defaultEnabled": true,
+      "mods": [
+        {
+          "id": "shulkerboxtooltip",
+          "name": "Shulker Box Tooltip",
+          "description": "Hover over shulker boxes in inventories to preview their contents directly.",
+          "modrinth": {
+            "projectId": "gXGdfp3S",
+            "slug": "shulkerboxtooltip",
+            "versionConstraint": "^5.0.4"
+          },
+          "hashes": {
+            "sha1": "2bdfe42a3bcfe4a23b93478e121ba48c5a2c3a6e"
+          },
+          "license": {
+            "name": "MIT",
+            "url": "https://github.com/MisterPeops/ShulkerBoxTooltip/blob/master/LICENSE"
+          },
+          "attribution": "MisterPeops"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "balanced",
+      "name": "Balanced Experience",
+      "description": "A stable mix of high performance, smooth visual upgrades, and QoL HUD enhancements."
+    },
+    {
+      "id": "performance",
+      "name": "Maximum Performance",
+      "description": "Aggressively optimizes frame rates by shutting off heavy graphic modules and particle layers."
+    },
+    {
+      "id": "visual",
+      "name": "Cinematic Visuals",
+      "description": "Focuses on graphic beauty. Enables shaders support, smooth zoom curves, and high rendering render-distances."
+    }
+  ]
+}
