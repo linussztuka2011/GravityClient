@@ -1,0 +1,27 @@
+{
+  "name": "gravity-launcher",
+  "version": "1.0.0",
+  "description": "Private premium desktop launcher for GravityClient",
+  "type": "module",
+  "main": "out/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "npm run build:main && electron .",
+    "electron:dev": "electron ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.0.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}
