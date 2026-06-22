@@ -2,24 +2,31 @@
 logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Dependency directories
 node_modules/
 jspm_packages/
-
-# Optional npm cache directory
-.npm
+.pnpm-store/
 
 # Output/build directories
 dist/
 out/
 build/
+release/
+bin/
+lib/
+*.asar
 
 # Operating System Files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# IDEs
+# IDEs and Editors
 .idea/
 .vscode/
 *.suo
@@ -27,3 +34,30 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.classpath
+.project
+.settings/
+.recommenders/
+
+# Gradle files
+.gradle/
+build/
+/client-core/build/
+/client-core/.gradle/
+local.properties
+.gradle/configuration-cache/
+
+# Minecraft launcher specific local dirs (for testing)
+/launcher/test-instances/
+/launcher/run/
+/launcher/out/
+/launcher/dist/
+
+# Downloaded files and user credentials (never commit these)
+*.jar
+!/client-core/gradle/wrapper/gradle-wrapper.jar
+*.zip
+*.tar.gz
+accounts.json
+launcher-profiles.json
+sessions/
