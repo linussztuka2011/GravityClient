@@ -1,0 +1,22 @@
+{
+  "id": "balanced",
+  "name": "Balanced Experience",
+  "description": "Sensible defaults for high frame-rates, clear coordinates HUD, and comfortable smooth zoom limits.",
+  "managedFiles": [
+    {
+      "source": "config/sodium-options.json",
+      "destination": "config/sodium-options.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/betterf3-config.json",
+      "destination": "config/betterf3-config.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/gravity-client-core.json",
+      "destination": "config/gravity-client-core.json",
+      "overwrite": true
+    }
+  ]
+}

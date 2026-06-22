@@ -1,0 +1,22 @@
+{
+  "id": "visual",
+  "name": "Cinematic Visuals",
+  "description": "Increases render distance to 24 chunks, enables maximum graphical fidelity, and applies a glowing cyan theme to HUD monitors.",
+  "managedFiles": [
+    {
+      "source": "config/sodium-options.json",
+      "destination": "config/sodium-options.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/betterf3-config.json",
+      "destination": "config/betterf3-config.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/gravity-client-core.json",
+      "destination": "config/gravity-client-core.json",
+      "overwrite": true
+    }
+  ]
+}

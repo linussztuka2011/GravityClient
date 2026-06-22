@@ -1,0 +1,9 @@
+{
+  "theme": "gravity_blue",
+  "display_fps": true,
+  "display_coords": true,
+  "display_direction": true,
+  "display_biome": true,
+  "display_system_info": true,
+  "background_opacity": 0.4
+}

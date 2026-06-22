@@ -1,0 +1,9 @@
+{
+  "theme": "performance_gray",
+  "display_fps": true,
+  "display_coords": true,
+  "display_direction": false,
+  "display_biome": false,
+  "display_system_info": false,
+  "background_opacity": 0.2
+}

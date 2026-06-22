@@ -1,0 +1,10 @@
+{
+  "theme": "cyan_glow",
+  "enableBranding": true,
+  "enableCustomMainMenu": true,
+  "debugOverlay": true,
+  "renderFpsOnHUD": true,
+  "keybinds": {
+    "openSettings": "key.keyboard.right.shift"
+  }
+}

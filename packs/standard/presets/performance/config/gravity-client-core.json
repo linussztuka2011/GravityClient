@@ -1,0 +1,10 @@
+{
+  "theme": "dark_slate",
+  "enableBranding": true,
+  "enableCustomMainMenu": false,
+  "debugOverlay": false,
+  "renderFpsOnHUD": true,
+  "keybinds": {
+    "openSettings": "key.keyboard.right.shift"
+  }
+}
