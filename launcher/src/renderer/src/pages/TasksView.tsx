@@ -4,9 +4,10 @@ import { LogEntry, TaskStatus } from '../types/index.js';
 interface TasksViewProps {
   taskStatus: TaskStatus;
   instanceName: string | undefined;
+  onBack: () => void;
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ taskStatus, instanceName }) => {
+export const TasksView: React.FC<TasksViewProps> = ({ taskStatus, instanceName, onBack }) => {
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll terminal console to the bottom when new logs flow in
@@ -17,14 +18,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ taskStatus, instanceName }
   }, [taskStatus.logs]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
-      <header>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 700 }} className="cyan-gradient-text">Console Controller</h2>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
-          {taskStatus.active
-            ? `Syncing dependencies and overlaying configs for "${instanceName || 'Selected Profile'}"`
-            : 'No active installation. Standby.'}
-        </p>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
+        <div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 700 }} className="cyan-gradient-text">Console Controller</h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+            {taskStatus.active
+              ? `Syncing dependencies and overlaying configs for "${instanceName || 'Selected Profile'}"`
+              : 'No active installation. Standby.'}
+          </p>
+        </div>
+        <button className="pill-btn" onClick={onBack}>
+          &larr; Back to Dashboard
+        </button>
       </header>
 
       {/* Progress Monitor */}

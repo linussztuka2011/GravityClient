@@ -10,7 +10,8 @@ import { AccountLogin } from './pages/AccountLogin.js';
 import { Singleplayer } from './pages/Singleplayer.js';
 import { Multiplayer } from './pages/Multiplayer.js';
 import { Instances } from './pages/Instances.js';
-import { InstanceConfig, PackManifest, TaskStatus, LogEntry, GlobalSettings } from './types/index.js';
+import { ModrinthInstall } from './pages/ModrinthInstall.js';
+import { InstanceConfig, PackManifest, TaskStatus, LogEntry, GlobalSettings, McVersion } from './types/index.js';
 
 const DEFAULT_SETTINGS: GlobalSettings = {
   ram: '4G',
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
   const [instances, setInstances] = useState<InstanceConfig[]>([]);
   const [activeInstance, setActiveInstance] = useState<InstanceConfig | null>(null);
   const [packManifest, setPackManifest] = useState<PackManifest | null>(null);
+  const [mcVersions, setMcVersions] = useState<McVersion[]>([]);
   
   // Settings state loaded from backend
   const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
@@ -50,7 +52,7 @@ export const App: React.FC = () => {
     logs: [],
   });
 
-  // Load settings, instances & manifest on startup
+  // Load settings, instances, manifest & Minecraft versions on startup
   useEffect(() => {
     const initData = async () => {
       try {
@@ -73,6 +75,38 @@ export const App: React.FC = () => {
       }
     };
     initData();
+
+    // Fetch Mojang Minecraft versions
+    const fetchMcVersions = async () => {
+      try {
+        const response = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest_v2.json');
+        if (response.ok) {
+          const data = await response.json();
+          // Filter to release and snapshot types
+          const mapped: McVersion[] = data.versions
+            .filter((v: any) => v.type === 'release' || v.type === 'snapshot')
+            .map((v: any) => ({
+              id: v.id,
+              type: v.type
+            }));
+          setMcVersions(mapped);
+        } else {
+          throw new Error('Mojang API not OK');
+        }
+      } catch (err) {
+        console.warn('Failed to fetch Minecraft versions from Mojang, fallback active.', err);
+        const fallbackReleases = [
+          '1.21.1', '1.21', '1.20.6', '1.20.4', '1.20.1', '1.19.4', '1.19.2', '1.18.2',
+          '1.17.1', '1.16.5', '1.15.2', '1.14.4', '1.13.2', '1.12.2', '1.8.9', '1.7.10', '1.0'
+        ];
+        const mappedFallback: McVersion[] = fallbackReleases.map(r => ({
+          id: r,
+          type: 'release' as const
+        }));
+        setMcVersions(mappedFallback);
+      }
+    };
+    fetchMcVersions();
   }, []);
 
   // Save settings callback
@@ -239,6 +273,7 @@ export const App: React.FC = () => {
           onDeleteInstance={handleDeleteInstance}
           onInstall={handleInstallPack}
           packManifest={packManifest}
+          mcVersions={mcVersions}
         />
       )}
 
@@ -262,6 +297,11 @@ export const App: React.FC = () => {
           onInstall={handleInstallPack}
           onLaunch={handleLaunchGame}
           onBack={() => setActiveTab('dashboard')}
+          onManageMods={(instance) => {
+            setActiveInstance(instance);
+            setActiveTab('modrinth_install');
+          }}
+          mcVersions={mcVersions}
         />
       )}
 
@@ -305,6 +345,7 @@ export const App: React.FC = () => {
         <Singleplayer
           onBack={() => setActiveTab('dashboard')}
           onLaunch={handleLaunchGame}
+          instanceId={activeInstance?.id ?? instances[0]?.id}
         />
       )}
 
@@ -312,6 +353,7 @@ export const App: React.FC = () => {
         <Multiplayer
           onBack={() => setActiveTab('dashboard')}
           onLaunch={handleLaunchGame}
+          instanceId={activeInstance?.id ?? instances[0]?.id}
         />
       )}
 
@@ -319,6 +361,14 @@ export const App: React.FC = () => {
         <TasksView
           taskStatus={taskStatus}
           instanceName={instances.find((i) => i.id === activeInstance?.id)?.name}
+          onBack={() => setActiveTab('dashboard')}
+        />
+      )}
+      
+      {activeTab === 'modrinth_install' && activeInstance && (
+        <ModrinthInstall
+          instance={activeInstance}
+          onBack={() => setActiveTab('instances')}
         />
       )}
     </Layout>

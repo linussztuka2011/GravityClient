@@ -7,6 +7,9 @@ import { PackInstaller } from './services/packInstaller.js';
 import { ConfigPresetService } from './services/configPresetService.js';
 import { MinecraftPaths } from './services/minecraftPaths.js';
 import { LaunchService } from './services/launchService.js';
+import { MicrosoftAuthService } from './services/microsoftAuthService.js';
+import { ModrinthService } from './services/modrinthService.js';
+
 
 // Resolve directory name for ESM stability
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +31,9 @@ function createWindow() {
     },
     backgroundColor: '#0B0C10',
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      // Electron executes preload files as CommonJS. The app package is ESM,
+      // so this must use the explicitly CommonJS .cjs bundle.
+      preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -155,6 +160,56 @@ function setupIpcHandlers() {
         success: false,
         message: `Execution failed: ${err.message}`
       };
+    }
+  });
+
+  // Microsoft OAuth Auth Flow
+  ipcMain.handle('microsoft-login-start', async () => {
+    try {
+      const flow = await MicrosoftAuthService.startDeviceCodeFlow();
+      return { success: true, flow };
+    } catch (err: any) {
+      console.error('Failed to start Microsoft Login Flow:', err.message);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('microsoft-login-poll', async (_event, deviceCode: string, interval: number) => {
+    try {
+      await MicrosoftAuthService.pollDeviceToken(deviceCode, interval, (status, details) => {
+        if (mainWindow) {
+          mainWindow.webContents.send('microsoft-login-status', { status, details });
+        }
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Failed polling Microsoft token:', err.message);
+      return false;
+    }
+  });
+
+  ipcMain.handle('microsoft-login-stop', () => {
+    MicrosoftAuthService.stopPolling();
+    return true;
+  });
+
+  // Modrinth search and installation
+  ipcMain.handle('modrinth-search', (_event, query: string, mcVersion?: string) => {
+    return ModrinthService.searchMods(query, mcVersion);
+  });
+
+  ipcMain.handle('modrinth-install', async (_event, instanceId: string, projectId: string, mcVersion?: string) => {
+    const onProgress = (percent: number) => {
+      if (mainWindow) {
+        mainWindow.webContents.send(`modrinth-install-progress-${instanceId}-${projectId}`, percent);
+      }
+    };
+    try {
+      const result = await ModrinthService.installModToInstance(instanceId, projectId, mcVersion, onProgress);
+      return result;
+    } catch (err: any) {
+      console.error('Failed to install Modrinth mod:', err.message);
+      return { success: false, error: err.message };
     }
   });
 }

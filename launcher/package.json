@@ -7,10 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build:main": "tsc -p tsconfig.main.json",
+    "build:preload": "esbuild src/preload/index.ts --bundle --platform=node --format=cjs --outfile=out/preload/index.cjs",
     "build:renderer": "vite build",
-    "build": "npm run build:main && npm run build:renderer",
-    "start": "npm run build:main && electron . --no-sandbox",
-    "electron:dev": "electron . --no-sandbox"
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "start": "npm run build:main && npm run build:preload && electron . --no-sandbox",
+    "electron:dev": "npm run build:main && npm run build:preload && electron . --no-sandbox"
   },
   "dependencies": {
     "minecraft-launcher-core": "^3.18.2",

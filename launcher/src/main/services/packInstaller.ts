@@ -80,13 +80,14 @@ export class PackInstaller {
           mod.id,
           modsDir,
           mod.hashes?.sha1,
-          (modProgress) => {
+          (modProgress: number) => {
             const currentPercentage = basePercentage + (modProgress / 100) * (60 / totalMods);
             progress(
               Math.min(95, Math.round(currentPercentage)),
               `Downloading ${mod.name} (${Math.round(modProgress)}%)`
             );
-          }
+          },
+          instance.minecraftVersion || '1.21'
         );
 
         // Verify SHA-1 if available

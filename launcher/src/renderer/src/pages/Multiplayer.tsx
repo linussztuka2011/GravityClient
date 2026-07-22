@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 interface MultiplayerProps {
   onBack: () => void;
   onLaunch: (instanceId: string) => void;
+  instanceId?: string;
 }
 
 interface ServerDef {
@@ -15,7 +16,7 @@ interface ServerDef {
   iconColor: string;
 }
 
-export const Multiplayer: React.FC<MultiplayerProps> = ({ onBack, onLaunch }) => {
+export const Multiplayer: React.FC<MultiplayerProps> = ({ onBack, onLaunch, instanceId }) => {
   const [servers, setServers] = useState<ServerDef[]>([
     { id: 'server1', name: 'Hypixel Network', ip: 'mc.hypixel.net', motd: '⚡ HYPIXEL SUMMER - 85+ Games! [1.8-1.21]', players: '48,210/100,000', ping: 32, iconColor: '#FFAE73' },
     { id: 'server2', name: 'Gravity Official Lounge', ip: 'play.gravityclient.net', motd: '✦ GravityClient Hub ✦ Smooth performance mods enabled!', players: '320/1,500', ping: 18, iconColor: '#FA895E' },
@@ -30,8 +31,12 @@ export const Multiplayer: React.FC<MultiplayerProps> = ({ onBack, onLaunch }) =>
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleJoinServer = (serverName: string) => {
-    alert(`Connecting to server "${serverName}"...`);
-    onLaunch('default_active_instance');
+    if (!instanceId) {
+      alert('Create and install a profile before starting Minecraft.');
+      return;
+    }
+    alert(`Starting your real Minecraft profile. Join "${serverName}" from Minecraft's Multiplayer menu.`);
+    onLaunch(instanceId);
   };
 
   const handleAddServerSubmit = (e: React.FormEvent) => {

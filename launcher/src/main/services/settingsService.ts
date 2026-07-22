@@ -2,6 +2,15 @@ import * as fs from 'fs';
 import { join } from 'path';
 import { MinecraftPaths } from './minecraftPaths.js';
 
+export interface RichAccount {
+  name: string; // Minecraft Username
+  uuid: string; // Minecraft UUID
+  type: 'offline' | 'microsoft';
+  accessToken?: string; // Minecraft Access Token
+  refreshToken?: string; // Microsoft Refresh Token
+  expiresAt?: number; // Expiration timestamp for Minecraft Access Token
+}
+
 export interface GlobalSettings {
   ram: string;
   customJava: string;
@@ -22,6 +31,7 @@ export interface GlobalSettings {
   };
   accounts: string[];
   activeAccount: string;
+  richAccounts?: RichAccount[];
 }
 
 const DEFAULT_SETTINGS: GlobalSettings = {
@@ -44,6 +54,13 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   },
   accounts: ['Player_Name'],
   activeAccount: 'Player_Name',
+  richAccounts: [
+    {
+      name: 'Player_Name',
+      uuid: 'offline-uuid-playername',
+      type: 'offline'
+    }
+  ]
 };
 
 export class SettingsService {

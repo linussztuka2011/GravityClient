@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 interface SingleplayerProps {
   onBack: () => void;
   onLaunch: (instanceId: string) => void;
+  instanceId?: string;
 }
 
 interface WorldDef {
@@ -14,7 +15,7 @@ interface WorldDef {
   size: string;
 }
 
-export const Singleplayer: React.FC<SingleplayerProps> = ({ onBack, onLaunch }) => {
+export const Singleplayer: React.FC<SingleplayerProps> = ({ onBack, onLaunch, instanceId }) => {
   const [worlds, setWorlds] = useState<WorldDef[]>([
     { id: 'world1', name: 'Survival Realm', mode: 'Survival Mode', version: '1.21', lastPlayed: '2026-06-22 15:30', size: '142 MB' },
     { id: 'world2', name: 'Creative Testing Ground', mode: 'Creative Mode', version: '1.21', lastPlayed: '2026-06-21 11:15', size: '89 MB' },
@@ -23,8 +24,12 @@ export const Singleplayer: React.FC<SingleplayerProps> = ({ onBack, onLaunch }) 
   ]);
 
   const handlePlayWorld = (worldName: string) => {
-    alert(`Launching Minecraft with world "${worldName}"...`);
-    onLaunch('default_active_instance');
+    if (!instanceId) {
+      alert('Create and install a profile before starting Minecraft.');
+      return;
+    }
+    alert(`Starting your real Minecraft profile. Select "${worldName}" from Minecraft's Singleplayer menu.`);
+    onLaunch(instanceId);
   };
 
   const handleCreateWorld = () => {

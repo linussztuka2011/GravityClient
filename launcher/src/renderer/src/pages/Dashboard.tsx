@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InstanceConfig, GlobalSettings, PackManifest } from '../types/index.js';
+import { InstanceConfig, GlobalSettings, PackManifest, McVersion } from '../types/index.js';
 import { SKIN_AVATARS } from './SkinMenu.js';
 
 interface DashboardProps {
@@ -12,6 +12,7 @@ interface DashboardProps {
   onDeleteInstance: (id: string) => void;
   onInstall: (instance: InstanceConfig) => void;
   packManifest: PackManifest | null;
+  mcVersions: McVersion[];
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -24,11 +25,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteInstance,
   onInstall,
   packManifest,
+  mcVersions,
 }) => {
   // Modal states for creating profile
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfileVersion, setNewProfileVersion] = useState('1.21');
+
+  React.useEffect(() => {
+    if (mcVersions && mcVersions.length > 0) {
+      setNewProfileVersion(mcVersions[0].id);
+    }
+  }, [mcVersions]);
 
   // Currently selected profile in the bottom list
   const [selectedInstance, setSelectedInstance] = useState<InstanceConfig | null>(instances[0] || null);
@@ -271,7 +279,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="form-group">
               <label>Minecraft Version</label>
               <select className="form-control form-select" value={newProfileVersion} onChange={(e) => setNewProfileVersion(e.target.value)}>
-                <option value="1.21">1.21 (Fabric)</option>
+                {mcVersions && mcVersions.length > 0 ? (
+                  <>
+                    <optgroup label="Releases" style={{ background: '#1e112a', color: '#fff' }}>
+                      {mcVersions.filter(v => v.type === 'release').map(v => (
+                        <option key={v.id} value={v.id} style={{ background: '#1e112a' }}>{v.id} (Fabric)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Snapshots & Pre-releases" style={{ background: '#1e112a', color: '#ffb5a7' }}>
+                      {mcVersions.filter(v => v.type === 'snapshot').map(v => (
+                        <option key={v.id} value={v.id} style={{ background: '#1e112a' }}>{v.id} (Fabric)</option>
+                      ))}
+                    </optgroup>
+                  </>
+                ) : (
+                  <option value="1.21">1.21 (Fabric)</option>
+                )}
               </select>
             </div>
 

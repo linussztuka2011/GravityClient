@@ -2,81 +2,81 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MinecraftPaths } from './minecraftPaths.js';
 
+type VersionProfile = Record<string, any>;
+
 export class FabricInstaller {
   /**
-   * Installs the Fabric loader metadata version JSON in the local versions directory.
-   * This is required by minecraft-launcher-core (MCLC) to launch modded clients.
+   * Resolves a Fabric profile into a complete version JSON that
+   * minecraft-launcher-core can launch. Fabric's API returns an inherited
+   * profile, while minecraft-launcher-core does not resolve `inheritsFrom`.
    */
   static async installLoader(
-    instanceId: string,
+    _instanceId: string,
     fabricVersion: string,
     mcVersion: string = '1.21',
     onLog?: (msg: string, level?: 'info' | 'warn' | 'error') => void
   ): Promise<boolean> {
     const log = onLog || (() => {});
-    const cleanFabricVersion = fabricVersion.replace(/[^0-9.]/g, ''); // strip any prefix like >=
+    const cleanFabricVersion = fabricVersion.replace(/[^0-9.]/g, '');
     const versionId = `fabric-loader-${cleanFabricVersion}-${mcVersion}`;
-    
-    log(`Preparing Fabric profile: ${versionId}`, 'info');
-    
-    const versionsDir = path.join(MinecraftPaths.getLauncherDataDir(), 'versions');
-    const versionFolder = path.join(versionsDir, versionId);
+    const versionFolder = path.join(MinecraftPaths.getLauncherDataDir(), 'versions', versionId);
     const versionJsonFile = path.join(versionFolder, `${versionId}.json`);
 
-    if (!fs.existsSync(versionFolder)) {
-      fs.mkdirSync(versionFolder, { recursive: true });
-    }
-
     try {
-      const url = `https://meta.fabricmc.net/v2/versions/loader/${mcVersion}/${cleanFabricVersion}/profile/json`;
-      log(`Fetching Fabric metadata profile from: ${url}`, 'info');
-      
-      const response = await fetch(url);
-      if (response.ok) {
-        const jsonText = await response.text();
-        // Verify parsing succeeds
-        JSON.parse(jsonText);
-        fs.writeFileSync(versionJsonFile, jsonText, 'utf8');
-        log(`Successfully downloaded and saved Fabric profile JSON!`, 'info');
-        return true;
-      } else {
-        throw new Error(`Server returned status code ${response.status}`);
-      }
-    } catch (err: any) {
-      log(`Fabric Metadata API fetch failed: ${err.message}. Using offline robust fallback profile.`, 'warn');
-      
-      // Standalone fully compatible local fallback JSON template matching 0.15.11 / 1.21
-      const fallbackJson = {
-        id: versionId,
-        inheritsFrom: mcVersion,
-        releaseTime: new Date().toISOString(),
-        time: new Date().toISOString(),
-        type: "release",
-        mainClass: "net.fabricmc.loader.impl.launch.knot.KnotClient",
-        arguments: {
-          game: [],
-          jvm: ["-DFabricMcEmu= net.minecraft.client.main.Main "]
-        },
-        libraries: [
-          { name: "org.ow2.asm:asm:9.6", url: "https://maven.fabricmc.net/" },
-          { name: "org.ow2.asm:asm-analysis:9.6", url: "https://maven.fabricmc.net/" },
-          { name: "org.ow2.asm:asm-commons:9.6", url: "https://maven.fabricmc.net/" },
-          { name: "org.ow2.asm:asm-tree:9.6", url: "https://maven.fabricmc.net/" },
-          { name: "org.ow2.asm:asm-util:9.6", url: "https://maven.fabricmc.net/" },
-          { name: "net.fabricmc:sponge-mixin:0.13.3+mixin.0.8.5", url: "https://maven.fabricmc.net/" },
-          { name: "net.fabricmc:intermediary:1.21", url: "https://maven.fabricmc.net/" },
-          { name: "net.fabricmc:fabric-loader:0.15.11", url: "https://maven.fabricmc.net/" }
-        ]
-      };
+      log(`Resolving official Fabric profile: ${versionId}`, 'info');
+      const [fabricResponse, manifestResponse] = await Promise.all([
+        fetch(`https://meta.fabricmc.net/v2/versions/loader/${mcVersion}/${cleanFabricVersion}/profile/json`),
+        fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json')
+      ]);
 
-      try {
-        fs.writeFileSync(versionJsonFile, JSON.stringify(fallbackJson, null, 2), 'utf8');
-        log(`Offline fallback Fabric profile written successfully to: ${path.basename(versionJsonFile)}`, 'info');
-        return true;
-      } catch (writeErr: any) {
-        log(`Critical write failure for offline fallback profile: ${writeErr.message}`, 'error');
-        return false;
+      if (!fabricResponse.ok) {
+        throw new Error(`Fabric metadata returned HTTP ${fabricResponse.status}`);
       }
+      if (!manifestResponse.ok) {
+        throw new Error(`Minecraft version manifest returned HTTP ${manifestResponse.status}`);
+      }
+
+      const fabricProfile = await fabricResponse.json() as VersionProfile;
+      const manifest = await manifestResponse.json() as { versions?: Array<{ id: string; url: string }> };
+      const vanillaEntry = manifest.versions?.find((version) => version.id === mcVersion);
+      if (!vanillaEntry) {
+        throw new Error(`Minecraft ${mcVersion} was not found in Mojang's release manifest`);
+      }
+
+      const vanillaResponse = await fetch(vanillaEntry.url);
+      if (!vanillaResponse.ok) {
+        throw new Error(`Minecraft ${mcVersion} metadata returned HTTP ${vanillaResponse.status}`);
+      }
+      const vanillaProfile = await vanillaResponse.json() as VersionProfile;
+      const resolvedProfile = this.mergeProfiles(vanillaProfile, fabricProfile, versionId);
+
+      fs.mkdirSync(versionFolder, { recursive: true });
+      fs.writeFileSync(versionJsonFile, JSON.stringify(resolvedProfile, null, 2), 'utf8');
+      log('Fabric and Minecraft metadata verified and saved.', 'info');
+      return true;
+    } catch (err: any) {
+      // A guessed profile can appear to work but fails later with missing
+      // libraries or assets. Do not claim the instance is launchable.
+      log(`Unable to prepare a verified Fabric profile: ${err.message}`, 'error');
+      return false;
     }
+  }
+
+  private static mergeProfiles(vanilla: VersionProfile, fabric: VersionProfile, versionId: string): VersionProfile {
+    const vanillaArguments = vanilla.arguments || { game: [], jvm: [] };
+    const fabricArguments = fabric.arguments || { game: [], jvm: [] };
+    return {
+      ...vanilla,
+      ...fabric,
+      id: versionId,
+      inheritsFrom: undefined,
+      libraries: [...(vanilla.libraries || []), ...(fabric.libraries || [])],
+      arguments: {
+        ...vanillaArguments,
+        ...fabricArguments,
+        game: [...(vanillaArguments.game || []), ...(fabricArguments.game || [])],
+        jvm: [...(vanillaArguments.jvm || []), ...(fabricArguments.jvm || [])]
+      }
+    };
   }
 }

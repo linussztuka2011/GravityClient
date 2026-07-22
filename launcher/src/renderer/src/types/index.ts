@@ -75,6 +75,15 @@ export interface TaskStatus {
   logs: LogEntry[];
 }
 
+export interface RichAccount {
+  name: string; // Minecraft Username
+  uuid: string; // Minecraft UUID
+  type: 'offline' | 'microsoft';
+  accessToken?: string; // Minecraft Access Token
+  refreshToken?: string; // Microsoft Refresh Token
+  expiresAt?: number; // Expiration timestamp for Minecraft Access Token
+}
+
 export interface GlobalSettings {
   ram: string;
   customJava: string;
@@ -95,6 +104,7 @@ export interface GlobalSettings {
   };
   accounts: string[];
   activeAccount: string;
+  richAccounts?: RichAccount[];
 }
 
 declare global {
@@ -109,9 +119,24 @@ declare global {
       getPackManifest(): Promise<PackManifest | null>;
       installPack(config: InstanceConfig): Promise<boolean>;
       launchGame(instanceId: string): Promise<{ success: boolean; message: string }>;
+      
+      // Microsoft Login Flow
+      startMicrosoftLogin(): Promise<{ success: boolean; flow?: { userCode: string; deviceCode: string; verificationUri: string; interval: number; expiresIn: number }; error?: string }>;
+      pollMicrosoftLogin(deviceCode: string, interval: number): Promise<boolean>;
+      stopMicrosoftLogin(): Promise<boolean>;
+      onMicrosoftLoginStatus(callback: (data: { status: 'WAITING' | 'SUCCESS' | 'EXPIRED' | 'ERROR'; details?: any }) => void): () => void;
+
       onPackInstallProgress(instanceId: string, callback: (data: { percent: number; currentStep: string }) => void): () => void;
       onPackInstallLog(instanceId: string, callback: (data: { timestamp: string; level: 'info' | 'warn' | 'error'; message: string }) => void): () => void;
+
+      // Modrinth Search and Install
+      modrinthSearch(query: string, mcVersion?: string): Promise<any[]>;
+      modrinthInstall(instanceId: string, projectId: string, mcVersion?: string): Promise<{ success: boolean; filename?: string; version?: string; error?: string }>;
+      onModrinthInstallProgress(instanceId: string, projectId: string, callback: (percent: number) => void): () => void;
     };
   }
 }
-
+export interface McVersion {
+  id: string;
+  type: 'release' | 'snapshot' | 'old_beta' | 'old_alpha';
+}

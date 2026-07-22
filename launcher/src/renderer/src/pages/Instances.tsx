@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InstanceConfig, PackManifest } from '../types/index.js';
+import { InstanceConfig, PackManifest, McVersion } from '../types/index.js';
 
 interface InstancesProps {
   instances: InstanceConfig[];
@@ -12,6 +12,8 @@ interface InstancesProps {
   onInstall: (instance: InstanceConfig) => void;
   onLaunch: (id: string) => void;
   onBack: () => void;
+  onManageMods: (instance: InstanceConfig) => void;
+  mcVersions: McVersion[];
 }
 
 export const Instances: React.FC<InstancesProps> = ({
@@ -25,10 +27,18 @@ export const Instances: React.FC<InstancesProps> = ({
   onInstall,
   onLaunch,
   onBack,
+  onManageMods,
+  mcVersions,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfileVersion, setNewProfileVersion] = useState('1.21');
+
+  React.useEffect(() => {
+    if (mcVersions && mcVersions.length > 0) {
+      setNewProfileVersion(mcVersions[0].id);
+    }
+  }, [mcVersions]);
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +137,9 @@ export const Instances: React.FC<InstancesProps> = ({
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="pill-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'rgba(255,74,90,0.4)', color: 'var(--color-error)' }} onClick={() => onDeleteInstance(activeInstance.id)}>
                   Delete
+                </button>
+                <button className="pill-btn" style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }} onClick={() => onManageMods(activeInstance)}>
+                  Install Mods
                 </button>
                 <button className="pill-btn" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => onInstall(activeInstance)}>
                   Sync & Install
@@ -275,7 +288,22 @@ export const Instances: React.FC<InstancesProps> = ({
             <div className="form-group">
               <label>Minecraft Version</label>
               <select className="form-control form-select" value={newProfileVersion} onChange={(e) => setNewProfileVersion(e.target.value)}>
-                <option value="1.21">1.21 (Fabric)</option>
+                {mcVersions && mcVersions.length > 0 ? (
+                  <>
+                    <optgroup label="Releases" style={{ background: '#1e112a', color: '#fff' }}>
+                      {mcVersions.filter(v => v.type === 'release').map(v => (
+                        <option key={v.id} value={v.id} style={{ background: '#1e112a' }}>{v.id} (Fabric)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Snapshots & Pre-releases" style={{ background: '#1e112a', color: '#ffb5a7' }}>
+                      {mcVersions.filter(v => v.type === 'snapshot').map(v => (
+                        <option key={v.id} value={v.id} style={{ background: '#1e112a' }}>{v.id} (Fabric)</option>
+                      ))}
+                    </optgroup>
+                  </>
+                ) : (
+                  <option value="1.21">1.21 (Fabric)</option>
+                )}
               </select>
             </div>
 

@@ -5,6 +5,7 @@ import { MinecraftPaths } from './minecraftPaths.js';
 import { SettingsService } from './settingsService.js';
 import { InstanceService } from './instanceService.js';
 import { FabricInstaller } from './fabricInstaller.js';
+import { MicrosoftAuthService } from './microsoftAuthService.js';
 
 // Resolve Client from MCLC ESM wrapper
 // @ts-ignore
@@ -81,15 +82,49 @@ export class LaunchService {
     const gameDir = MinecraftPaths.getInstanceDir(instanceId);
 
     log(`Launcher root directory: ${rootDir}`, 'info');
-    log(`Profile game directory: ${gameDir}`, 'info');
-
-    const authorization = {
+    let authorization = {
       access_token: 'null',
       client_token: 'null',
       uuid: 'offline-uuid-' + activeAccount.toLowerCase().replace(/[^a-z0-9]/g, ''),
       name: activeAccount,
       user_properties: '{}'
     };
+
+    // Silent Microsoft Premium Auth verify & refresh if configured
+    if (settings.richAccounts) {
+      let richAcc = settings.richAccounts.find((a) => a.name === activeAccount);
+      if (richAcc && richAcc.type === 'microsoft') {
+        log(`Premium account identified: ${richAcc.name}. Validating credentials...`, 'info');
+        try {
+          const now = Date.now();
+          if (!richAcc.accessToken || !richAcc.expiresAt || now >= richAcc.expiresAt) {
+            log(`Minecraft Access Token is expired. Initiating silent refresh...`, 'info');
+            const refreshed = await MicrosoftAuthService.refreshAccount(richAcc);
+            
+            // Persist the refreshed tokens immediately
+            const updatedRich = (settings.richAccounts || []).map((a) => a.name === refreshed.name ? refreshed : a);
+            SettingsService.saveSettings({
+              ...settings,
+              richAccounts: updatedRich
+            });
+            
+            richAcc = refreshed;
+            log(`Silent credentials refresh completed successfully!`, 'info');
+          }
+
+          authorization = {
+            access_token: richAcc.accessToken || 'null',
+            client_token: 'null',
+            uuid: richAcc.uuid,
+            name: richAcc.name,
+            user_properties: '{}'
+          };
+          log(`Premium Auth active: Logged in securely as ${richAcc.name} (UUID: ${richAcc.uuid})!`, 'info');
+        } catch (err: any) {
+          log(`Failed to refresh premium credentials: ${err.message}. Falling back to offline execution.`, 'warn');
+        }
+      }
+    }
 
     const maxMemory = settings.ram || '4G';
     // standard min memory is 1G or maxMemory / 4
@@ -98,14 +133,20 @@ export class LaunchService {
     const opts: any = {
       authorization,
       root: rootDir,
-      gameDirectory: gameDir,
       version: {
+        // The Fabric profile is a locally resolved version. `custom` tells
+        // minecraft-launcher-core to use that profile instead of attempting
+        // to find a non-existent Fabric ID in Mojang's release manifest.
         number: versionId,
+        custom: versionId,
         type: 'release'
       },
       memory: {
         max: maxMemory,
         min: minMemory
+      },
+      overrides: {
+        gameDirectory: gameDir
       }
     };
 
@@ -123,12 +164,12 @@ export class LaunchService {
     log(`Spawning Minecraft version ${mcVersion} with authorization name: "${activeAccount}"`, 'info');
 
     try {
-      // Execute the launch asynchronously
-      launcher.launch(opts);
-
-      // Handle events
+      // Subscribe before launch so initial download errors and Java failures
+      // are visible to the user instead of being lost during startup.
       launcher.on('debug', (e: any) => {
-        console.log(`[MCLC DEBUG] ${e}`);
+        const text = e.toString().trim();
+        console.log(`[MCLC DEBUG] ${text}`);
+        if (text) log(text, text.includes('Failed') || text.includes("Couldn't") ? 'error' : 'info');
       });
 
       launcher.on('data', (e: any) => {
@@ -138,11 +179,10 @@ export class LaunchService {
         }
       });
 
-      launcher.on('progress', (e: any) => {
-        if (e.type && e.task && e.total) {
-          const pct = Math.round((e.value / e.total) * 100);
-          console.log(`[MCLC PROGRESS] ${e.type} - ${e.task}: ${pct}%`);
-          progress(75 + Math.round((e.value / e.total) * 20), `Downloading files: ${e.task} (${pct}%)`);
+      launcher.on('download-status', (e: any) => {
+        if (e.total > 0) {
+          const pct = Math.round((e.current / e.total) * 100);
+          progress(75 + Math.round((e.current / e.total) * 20), `Downloading ${e.name} (${pct}%)`);
         }
       });
 
@@ -151,8 +191,16 @@ export class LaunchService {
         log(`Minecraft process closed with exit code ${code}`, 'info');
       });
 
-      progress(100, 'Launch completed successfully');
-      log('Minecraft process spawned successfully in the background!', 'info');
+      const process = await launcher.launch(opts);
+      if (!process) {
+        return {
+          success: false,
+          message: 'Minecraft did not start. Check the launch log for the Java or download error.'
+        };
+      }
+
+      progress(100, 'Minecraft started');
+      log(`Minecraft started with process ID ${process.pid}.`, 'info');
 
       return {
         success: true,
