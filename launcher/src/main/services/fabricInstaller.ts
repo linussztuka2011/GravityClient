@@ -6,6 +6,37 @@ type VersionProfile = Record<string, any>;
 
 export class FabricInstaller {
   /**
+   * Fabric snapshots can require a newer loader than the one stored in an
+   * existing profile. Ask Fabric's compatibility endpoint on every launch so
+   * a profile never tries to boot a new Minecraft class format with an old
+   * bundled ASM reader.
+   */
+  static async resolveCompatibleLoaderVersion(mcVersion: string, requestedVersion: string): Promise<string> {
+    const requested = requestedVersion.replace(/[^0-9.]/g, '');
+
+    try {
+      const response = await fetch(`https://meta.fabricmc.net/v2/versions/loader/${mcVersion}`);
+      if (!response.ok) {
+        throw new Error(`Fabric metadata returned HTTP ${response.status}`);
+      }
+
+      const candidates = await response.json() as Array<{ loader?: { version?: string; stable?: boolean } }>;
+      const compatible = candidates.find((candidate) => candidate.loader?.stable && candidate.loader.version)
+        ?? candidates.find((candidate) => candidate.loader?.version);
+      if (!compatible?.loader?.version) {
+        throw new Error('Fabric did not return a compatible loader version');
+      }
+
+      return compatible.loader.version;
+    } catch {
+      // Keeping the requested version gives normal releases an offline
+      // fallback, while online launches still always select Fabric's current
+      // compatible loader.
+      return requested;
+    }
+  }
+
+  /**
    * Resolves a Fabric profile into a complete version JSON that
    * minecraft-launcher-core can launch. Fabric's API returns an inherited
    * profile, while minecraft-launcher-core does not resolve `inheritsFrom`.

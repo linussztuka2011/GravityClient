@@ -41,8 +41,14 @@ export class LaunchService {
 
     // 2. Prepare Fabric Loader version profile
     progress(15, 'Verifying Fabric version profile');
-    const cleanFabricVersion = config.modLoaderVersion.replace(/[^0-9.]/g, '');
     const mcVersion = config.minecraftVersion;
+    const requestedFabricVersion = config.modLoaderVersion.replace(/[^0-9.]/g, '');
+    const cleanFabricVersion = await FabricInstaller.resolveCompatibleLoaderVersion(mcVersion, requestedFabricVersion);
+    if (cleanFabricVersion !== requestedFabricVersion) {
+      log(`Updating Fabric Loader from ${requestedFabricVersion} to compatible version ${cleanFabricVersion} for Minecraft ${mcVersion}.`, 'info');
+      config.modLoaderVersion = cleanFabricVersion;
+      InstanceService.updateInstance(config);
+    }
     const versionId = `fabric-loader-${cleanFabricVersion}-${mcVersion}`;
 
     const loaderOk = await FabricInstaller.installLoader(
