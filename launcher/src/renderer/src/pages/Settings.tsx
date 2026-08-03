@@ -28,6 +28,10 @@ export const Settings: React.FC<SettingsProps> = ({
   const [masterVolume, setMasterVolume] = useState<number>(80);
   const [musicVolume, setMusicVolume] = useState<number>(50);
 
+  // Settings import/export feedback
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferMessage, setTransferMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
+
   // Save specific states back to parent settings
   const handleSaveSubState = (updates: Partial<GlobalSettings>) => {
     const updated = {
@@ -124,7 +128,8 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="glass-panel" style={{ padding: '32px', width: '500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="cyan-gradient-text">✦ Antigravity Engine ✦</h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
-              Antigravity provides zero-latency client-side thread virtualization and smart chunk-loading heuristics. Configured by Google DeepMind's Advanced Agentic Coding team.
+              When enabled, the launcher downloads the latest Meteor Client snapshot into the active profile's
+              mods folder at launch, and removes it again when disabled. Nothing else about the profile changes.
             </p>
             <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -274,18 +279,84 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Import Settings Modal */}
+      {/* Import / Export Settings Modal */}
       {activeModal === 'import_settings' && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Import Configuration</h3>
+          <div className="glass-panel" style={{ padding: '32px', width: '480px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600 }}>Import / Export Configuration</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-              Select a JSON settings configuration backup file to import settings instantly.
+              Settings are read from and written to a real JSON file. Imported keys are merged over your
+              current configuration, so a partial export cannot blank anything out.
             </p>
-            <button className="pill-btn" style={{ padding: '12px' }} onClick={() => alert('Backup import action selected. Simulating import...')}>
-              Select JSON file from computer...
+
+            {transferMessage && (
+              <div style={{
+                padding: '10px 14px', borderRadius: '10px', fontSize: '0.8rem', wordBreak: 'break-word',
+                background: transferMessage.kind === 'error' ? 'rgba(255,74,90,0.1)' : 'rgba(96,255,174,0.08)',
+                border: `1px solid ${transferMessage.kind === 'error' ? 'var(--color-error)' : 'rgba(96,255,174,0.35)'}`,
+                color: transferMessage.kind === 'error' ? 'var(--color-error)' : '#60FFAE',
+              }}>
+                {transferMessage.text}
+              </div>
+            )}
+
+            <button
+              className="pill-btn"
+              style={{ padding: '12px' }}
+              disabled={transferBusy}
+              onClick={async () => {
+                setTransferBusy(true);
+                setTransferMessage(null);
+                try {
+                  const result = await window.gravityAPI.importSettingsFile();
+                  if (result.canceled) return;
+                  if (result.success && result.settings) {
+                    onSaveSettings(result.settings);
+                    setRam(result.settings.ram || '4G');
+                    setCustomJava(result.settings.customJava || '');
+                    setDebugMode(Boolean(result.settings.debugMode));
+                    setTransferMessage({ kind: 'info', text: `Imported settings from ${result.path}` });
+                  } else {
+                    setTransferMessage({ kind: 'error', text: result.error || 'Import failed.' });
+                  }
+                } catch (err: any) {
+                  setTransferMessage({ kind: 'error', text: err?.message || 'Import failed.' });
+                } finally {
+                  setTransferBusy(false);
+                }
+              }}
+            >
+              Import settings from a JSON file…
             </button>
-            <button className="pill-btn primary" onClick={() => setActiveModal(null)}>Cancel</button>
+
+            <button
+              className="pill-btn"
+              style={{ padding: '12px' }}
+              disabled={transferBusy}
+              onClick={async () => {
+                setTransferBusy(true);
+                setTransferMessage(null);
+                try {
+                  const result = await window.gravityAPI.exportSettingsFile();
+                  if (result.canceled) return;
+                  setTransferMessage(
+                    result.success
+                      ? { kind: 'info', text: `Exported current settings to ${result.path}` }
+                      : { kind: 'error', text: result.error || 'Export failed.' }
+                  );
+                } catch (err: any) {
+                  setTransferMessage({ kind: 'error', text: err?.message || 'Export failed.' });
+                } finally {
+                  setTransferBusy(false);
+                }
+              }}
+            >
+              Export current settings…
+            </button>
+
+            <button className="pill-btn primary" onClick={() => { setActiveModal(null); setTransferMessage(null); }}>
+              Close
+            </button>
           </div>
         </div>
       )}

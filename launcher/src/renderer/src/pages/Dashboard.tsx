@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { InstanceConfig, GlobalSettings, PackManifest, McVersion } from '../types/index.js';
-import { SKIN_AVATARS } from './SkinMenu.js';
+import React, { useEffect, useState } from 'react';
+import { InstanceConfig, GlobalSettings, PackManifest, McVersion, SkinEntry } from '../types/index.js';
+import { SkinHead } from './SkinMenu.js';
 
 interface DashboardProps {
   instances: InstanceConfig[];
@@ -42,7 +42,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [selectedInstance, setSelectedInstance] = useState<InstanceConfig | null>(instances[0] || null);
 
   const activeAccount = settings.activeAccount || 'Player_Name';
-  const activeSkin = settings.activeSkin || 'Steve';
+
+  // Show the real skin PNG the player has equipped, straight from the library.
+  const [activeSkin, setActiveSkin] = useState<SkinEntry | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    window.gravityAPI
+      .listSkins()
+      .then((library) => {
+        if (cancelled) return;
+        setActiveSkin(library.find((s) => s.id === settings.activeSkin) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveSkin(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.activeSkin]);
+
+  // Derived from the real profile record rather than a fixed value.
+  const readiness = (() => {
+    if (instances.length === 0) return { percent: 0, label: 'No profiles yet', ready: false };
+    if (!selectedInstance) return { percent: 25, label: 'Select a profile', ready: false };
+    if (!selectedInstance.installedPackVersion) return { percent: 50, label: 'Needs Sync & Install', ready: false };
+    return { percent: 100, label: `Pack v${selectedInstance.installedPackVersion} ready`, ready: true };
+  })();
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +116,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }}
           title="Click to open Skin Menu"
         >
-          <div style={{ width: '90px', height: '90px', borderRadius: '12px', border: '2px solid rgba(255,255,255,0.15)', overflow: 'hidden', padding: '4px', background: 'rgba(0,0,0,0.25)' }}>
-            {SKIN_AVATARS[activeSkin] || SKIN_AVATARS['Steve']}
+          <div style={{ borderRadius: '12px', border: '2px solid rgba(255,255,255,0.15)', padding: '5px', background: 'rgba(0,0,0,0.25)', display: 'flex' }}>
+            {activeSkin ? (
+              <SkinHead dataUri={activeSkin.dataUri} size={80} title={activeSkin.name} />
+            ) : (
+              <svg viewBox="0 0 8 8" width={80} height={80} shapeRendering="crispEdges">
+                <rect x="0" y="0" width="8" height="3" fill="#4B2513" />
+                <rect x="0" y="3" width="8" height="5" fill="#E2A68C" />
+                <rect x="1" y="2" width="6" height="1" fill="#E2A68C" />
+                <rect x="1" y="4" width="2" height="1" fill="#FFFFFF" />
+                <rect x="1" y="4" width="1" height="1" fill="#3D50B5" />
+                <rect x="5" y="4" width="2" height="1" fill="#FFFFFF" />
+                <rect x="6" y="4" width="1" height="1" fill="#3D50B5" />
+                <rect x="3" y="5" width="2" height="1" fill="#B37E66" />
+                <rect x="2" y="6" width="4" height="1" fill="#402010" />
+              </svg>
+            )}
           </div>
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Active Operative</span>
@@ -118,7 +157,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </svg>
               Multiplayer Connection Deck
             </button>
-            <button className="pill-btn" style={{ justifyContent: 'flex-start', padding: '12px 20px' }} onClick={() => alert('Opening local Minecraft Game Directory folder...')}>
+            <button
+              className="pill-btn"
+              style={{ justifyContent: 'flex-start', padding: '12px 20px' }}
+              onClick={async () => {
+                const result = await window.gravityAPI.openGameDirectory(selectedInstance?.id ?? instances[0]?.id);
+                if (!result.success) alert(`Could not open the game directory: ${result.error}`);
+              }}
+            >
               <svg style={{ width: '18px', height: '18px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
@@ -140,14 +186,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <button className="pill-btn" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }} onClick={() => setActiveTab('settings')}>Settings</button>
             <button className="pill-btn" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }} onClick={() => alert('GravityClient v1.0.0-Sunset. Optimizations fully deployed!')}>Changelog</button>
           </div>
-          {/* Progress bar simulation */}
+          {/* Readiness reflects the selected profile's real install state. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              <span>Engine Status</span>
-              <span>100% Ready</span>
+              <span>Profile Status</span>
+              <span style={{ color: readiness.ready ? '#60FFAE' : 'var(--color-text-muted)' }}>{readiness.label}</span>
             </div>
             <div style={{ width: '100%', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-              <div style={{ width: '100%', height: '100%', background: 'linear-gradient(to right, var(--color-accent), #FFDD73)', borderRadius: '3px' }} />
+              <div
+                style={{
+                  width: `${readiness.percent}%`,
+                  height: '100%',
+                  background: readiness.ready
+                    ? 'linear-gradient(to right, var(--color-accent), #FFDD73)'
+                    : 'rgba(255,255,255,0.25)',
+                  borderRadius: '3px',
+                  transition: 'width 0.3s ease',
+                }}
+              />
             </div>
           </div>
         </div>

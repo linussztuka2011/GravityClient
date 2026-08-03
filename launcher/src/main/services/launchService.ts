@@ -6,6 +6,7 @@ import { SettingsService } from './settingsService.js';
 import { InstanceService } from './instanceService.js';
 import { FabricInstaller } from './fabricInstaller.js';
 import { MicrosoftAuthService } from './microsoftAuthService.js';
+import { syncClientCoreConfig } from './clientConfigService.js';
 
 // Resolve Client from MCLC ESM wrapper
 // @ts-ignore
@@ -79,9 +80,18 @@ export class LaunchService {
       this.purgeMeteorClient(modsDir, log);
     }
 
-    // 4. Construct launching configurations
+    // 4. Hand the current mod/HUD settings to the companion mod before it loads.
+    progress(45, 'Syncing client-core configuration');
+    try {
+      const configPath = await syncClientCoreConfig(MinecraftPaths.getInstanceDir(instanceId), settings);
+      log(`Client-core settings written to ${configPath}`, 'info');
+    } catch (err: any) {
+      log(`Could not write client-core config: ${err.message}. The mod will use its previous settings.`, 'warn');
+    }
+
+    // 5. Construct launching configurations
     progress(50, 'Assembling JVM execution parameters');
-    
+
     const launcher = new Client();
     
     const rootDir = MinecraftPaths.getLauncherDataDir();

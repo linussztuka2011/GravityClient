@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { InstanceService } from './services/instanceService.js';
@@ -9,6 +9,10 @@ import { MinecraftPaths } from './services/minecraftPaths.js';
 import { LaunchService } from './services/launchService.js';
 import { MicrosoftAuthService } from './services/microsoftAuthService.js';
 import { ModrinthService } from './services/modrinthService.js';
+import { syncClientCoreConfig } from './services/clientConfigService.js';
+import * as WorldService from './services/worldService.js';
+import * as ServerService from './services/serverService.js';
+import * as SkinService from './services/skinService.js';
 
 
 // Resolve directory name for ESM stability
@@ -77,8 +81,19 @@ function setupIpcHandlers() {
     return SettingsService.getSettings();
   });
 
-  ipcMain.handle('save-settings', (_event, settings) => {
+  ipcMain.handle('save-settings', async (_event, settings) => {
     SettingsService.saveSettings(settings);
+    // Push mod/HUD settings into every profile so the companion mod picks them
+    // up on the next launch regardless of which profile is started.
+    await Promise.all(
+      InstanceService.getInstances().map(async (instance) => {
+        try {
+          await syncClientCoreConfig(MinecraftPaths.getInstanceDir(instance.id), settings);
+        } catch (err: any) {
+          console.error(`Failed to sync client-core config for ${instance.id}:`, err.message);
+        }
+      })
+    );
     return true;
   });
 
@@ -120,7 +135,7 @@ function setupIpcHandlers() {
   });
 
   // Install Modpack queue (realtime events mapped to renderer)
-  ipcMain.handle('install-pack', async (event, instanceConfig) => {
+  ipcMain.handle('install-pack', async (_event, instanceConfig) => {
     const onProgress = (percent: number, currentStep: string) => {
       if (mainWindow) {
         mainWindow.webContents.send(`pack-install-progress-${instanceConfig.id}`, {
@@ -212,10 +227,205 @@ function setupIpcHandlers() {
       return { success: false, error: err.message };
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Singleplayer worlds — real saves/ folder operations
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('worlds-list', (_event, instanceId: string) =>
+    WorldService.listWorlds(MinecraftPaths.getInstanceDir(instanceId))
+  );
+
+  ipcMain.handle('world-rename', (_event, instanceId: string, folderName: string, newName: string) =>
+    WorldService.renameWorld(MinecraftPaths.getInstanceDir(instanceId), folderName, newName)
+  );
+
+  ipcMain.handle('world-delete', (_event, instanceId: string, folderName: string) =>
+    WorldService.deleteWorld(MinecraftPaths.getInstanceDir(instanceId), folderName)
+  );
+
+  ipcMain.handle('world-duplicate', (_event, instanceId: string, folderName: string) =>
+    WorldService.duplicateWorld(MinecraftPaths.getInstanceDir(instanceId), folderName)
+  );
+
+  // -------------------------------------------------------------------------
+  // Multiplayer servers — real servers.dat plus live status pings
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('servers-list', (_event, instanceId: string) =>
+    ServerService.listServers(MinecraftPaths.getInstanceDir(instanceId))
+  );
+
+  ipcMain.handle('server-add', (_event, instanceId: string, name: string, ip: string) =>
+    ServerService.addServer(MinecraftPaths.getInstanceDir(instanceId), name, ip)
+  );
+
+  ipcMain.handle('server-update', (_event, instanceId: string, index: number, name: string, ip: string) =>
+    ServerService.updateServer(MinecraftPaths.getInstanceDir(instanceId), index, name, ip)
+  );
+
+  ipcMain.handle('server-delete', (_event, instanceId: string, index: number) =>
+    ServerService.deleteServer(MinecraftPaths.getInstanceDir(instanceId), index)
+  );
+
+  ipcMain.handle('server-ping', (_event, address: string) => ServerService.pingServer(address));
+
+  // -------------------------------------------------------------------------
+  // Skins — local library plus Minecraft Services for premium accounts
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('skins-list', () => SkinService.listSkins(MinecraftPaths.getSkinsDir()));
+
+  ipcMain.handle('skin-import-file', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Select a Minecraft skin',
+      properties: ['openFile'],
+      filters: [{ name: 'Minecraft Skin (PNG)', extensions: ['png'] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+    try {
+      const skin = await SkinService.importSkinFromFile(MinecraftPaths.getSkinsDir(), result.filePaths[0]);
+      return { success: true, skin };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('skin-import-url', async (_event, url: string) => {
+    try {
+      const skin = await SkinService.importSkinFromUrl(MinecraftPaths.getSkinsDir(), url);
+      return { success: true, skin };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('skin-delete', (_event, id: string) => SkinService.deleteSkin(MinecraftPaths.getSkinsDir(), id));
+
+  /** Applies a library skin to the active account via Mojang. */
+  ipcMain.handle('skin-apply', async (_event, skinId: string, model: 'classic' | 'slim') => {
+    const settings = SettingsService.getSettings();
+    const account = (settings.richAccounts || []).find((a) => a.name === settings.activeAccount);
+
+    if (!account || account.type !== 'microsoft' || !account.accessToken) {
+      return {
+        success: false,
+        error: 'Applying a skin to Mojang needs a signed-in Microsoft account. The skin stays saved in your local library.',
+      };
+    }
+
+    try {
+      let token = account.accessToken;
+      if (!account.expiresAt || Date.now() >= account.expiresAt) {
+        const refreshed = await MicrosoftAuthService.refreshAccount(account);
+        SettingsService.saveSettings({
+          ...settings,
+          richAccounts: (settings.richAccounts || []).map((a) => (a.name === refreshed.name ? refreshed : a)),
+        });
+        token = refreshed.accessToken || token;
+      }
+      await SkinService.applySkinToAccount(token, MinecraftPaths.getSkinsDir(), skinId, model);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  /** Pulls the account's currently-worn skin down into the local library. */
+  ipcMain.handle('skin-import-active-account', async () => {
+    const settings = SettingsService.getSettings();
+    const account = (settings.richAccounts || []).find((a) => a.name === settings.activeAccount);
+
+    if (!account || account.type !== 'microsoft' || !account.accessToken) {
+      return { success: false, error: 'Sign in with a Microsoft account to import the skin it is currently wearing.' };
+    }
+
+    try {
+      const skin = await SkinService.importActiveAccountSkin(account.accessToken, MinecraftPaths.getSkinsDir());
+      return skin
+        ? { success: true, skin }
+        : { success: false, error: 'That account is using the default Minecraft skin.' };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // OS integration
+  // -------------------------------------------------------------------------
+
+  /** Opens an instance's game directory (or the launcher root) in the file manager. */
+  ipcMain.handle('open-game-directory', async (_event, instanceId?: string) => {
+    const target = instanceId ? MinecraftPaths.getInstanceDir(instanceId) : MinecraftPaths.getLauncherDataDir();
+    const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true, path: target };
+  });
+
+  ipcMain.handle('open-external', async (_event, url: string) => {
+    // Only ever hand real web URLs to the OS handler.
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return { success: false, error: 'Only http and https links can be opened.' };
+      }
+      await shell.openExternal(parsed.toString());
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  /** Imports a settings JSON exported from this or another launcher. */
+  ipcMain.handle('import-settings-file', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Import launcher settings',
+      properties: ['openFile'],
+      filters: [{ name: 'Settings (JSON)', extensions: ['json'] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    try {
+      const raw = await fsPromises.readFile(result.filePaths[0], 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('That file does not contain a settings object.');
+      }
+
+      // Merge over current settings so a partial export cannot blank fields out.
+      const current = SettingsService.getSettings();
+      const merged = { ...current, ...parsed };
+      SettingsService.saveSettings(merged);
+      return { success: true, settings: merged, path: result.filePaths[0] };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('export-settings-file', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Export launcher settings',
+      defaultPath: 'gravityclient-settings.json',
+      filters: [{ name: 'Settings (JSON)', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+    try {
+      await fsPromises.writeFile(result.filePath, JSON.stringify(SettingsService.getSettings(), null, 2), 'utf8');
+      return { success: true, path: result.filePath };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
 }
 
 // Low level helpers to avoid circular import issues
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 function fsExists(p: string): boolean {
   return fs.existsSync(p);
 }

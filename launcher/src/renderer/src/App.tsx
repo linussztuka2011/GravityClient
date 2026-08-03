@@ -18,8 +18,9 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   customJava: '',
   debugMode: false,
   activeProfileId: '',
-  activeSkin: 'Steve',
+  activeSkin: '',
   enabledMods: ['FPS Counter', 'Ping Display', 'ToggleSprint/Sneak', 'Direction HUD', 'Armor Status'],
+  meteorEnabled: false,
   fpsSettings: {
     position: 'Top Left',
     color: '#FFFFFF',
@@ -311,6 +312,7 @@ export const App: React.FC = () => {
           onSaveSettings={handleSaveSettings}
           onBack={() => setActiveTab('dashboard')}
           onNavigateToSettingsProfiles={() => setActiveTab('instances')}
+          onNavigateToTab={setActiveTab}
         />
       )}
 
@@ -321,6 +323,13 @@ export const App: React.FC = () => {
           onBack={() => setActiveTab('settings')}
           onNavigateToFPSSettings={() => setActiveTab('fps_settings')}
           onNavigateToSettingsProfiles={() => setActiveTab('instances')}
+          onNavigateToModrinth={() => {
+            if (activeInstance) {
+              setActiveTab('modrinth_install');
+            } else {
+              setActiveTab('instances');
+            }
+          }}
         />
       )}
 
@@ -346,6 +355,7 @@ export const App: React.FC = () => {
           onBack={() => setActiveTab('dashboard')}
           onLaunch={handleLaunchGame}
           instanceId={activeInstance?.id ?? instances[0]?.id}
+          instanceName={(activeInstance ?? instances[0])?.name}
         />
       )}
 
@@ -354,6 +364,7 @@ export const App: React.FC = () => {
           onBack={() => setActiveTab('dashboard')}
           onLaunch={handleLaunchGame}
           instanceId={activeInstance?.id ?? instances[0]?.id}
+          instanceName={(activeInstance ?? instances[0])?.name}
         />
       )}
 

@@ -39,7 +39,8 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   customJava: '',
   debugMode: false,
   activeProfileId: '',
-  activeSkin: 'Steve',
+  // Holds a skin library id once the user picks one; empty means "default skin".
+  activeSkin: '',
   enabledMods: ['FPS Counter', 'Ping Display', 'ToggleSprint/Sneak', 'Direction HUD', 'Armor Status'],
   meteorEnabled: false,
   fpsSettings: {

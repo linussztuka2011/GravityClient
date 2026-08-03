@@ -1,282 +1,298 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ServerEntry, ServerStatus } from '../types/index.js';
 
 interface MultiplayerProps {
   onBack: () => void;
   onLaunch: (instanceId: string) => void;
   instanceId?: string;
+  instanceName?: string;
 }
 
-interface ServerDef {
-  id: string;
-  name: string;
-  ip: string;
-  motd: string;
-  players: string;
-  ping: number;
-  iconColor: string;
-}
+const getPingColor = (p: number) => {
+  if (p < 80) return '#60FFAE';
+  if (p < 200) return '#FFDD73';
+  return '#FF4A5A';
+};
 
-export const Multiplayer: React.FC<MultiplayerProps> = ({ onBack, onLaunch, instanceId }) => {
-  const [servers, setServers] = useState<ServerDef[]>([
-    { id: 'server1', name: 'Hypixel Network', ip: 'mc.hypixel.net', motd: '⚡ HYPIXEL SUMMER - 85+ Games! [1.8-1.21]', players: '48,210/100,000', ping: 32, iconColor: '#FFAE73' },
-    { id: 'server2', name: 'Gravity Official Lounge', ip: 'play.gravityclient.net', motd: '✦ GravityClient Hub ✦ Smooth performance mods enabled!', players: '320/1,500', ping: 18, iconColor: '#FA895E' },
-    { id: 'server3', name: 'Wynncraft', ip: 'play.wynncraft.com', motd: 'THE MINECRAFT MMORPG ✦ [NEW UPDATE OUT NOW]', players: '2,845/5,000', ping: 45, iconColor: '#B92F47' },
-    { id: 'server4', name: 'Local Dev Sandbox', ip: '127.0.0.1:25565', motd: 'A private simulation playground', players: '0/20', ping: 4, iconColor: '#6A1A37' },
-  ]);
+export const Multiplayer: React.FC<MultiplayerProps> = ({ onBack, onLaunch, instanceId, instanceName }) => {
+  const [servers, setServers] = useState<ServerEntry[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, ServerStatus | 'pending'>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [modal, setModal] = useState<'add' | 'edit' | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [serverName, setServerName] = useState('');
   const [serverIp, setServerIp] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const handleJoinServer = (serverName: string) => {
+  /** Pings every listed address; results stream in per server. */
+  const pingAll = useCallback(async (entries: ServerEntry[]) => {
+    const addresses = Array.from(new Set(entries.map((e) => e.ip).filter(Boolean)));
+    setStatuses((prev) => {
+      const next = { ...prev };
+      for (const address of addresses) next[address] = 'pending';
+      return next;
+    });
+
+    await Promise.all(
+      addresses.map(async (address) => {
+        try {
+          const status = await window.gravityAPI.pingServer(address);
+          setStatuses((prev) => ({ ...prev, [address]: status }));
+        } catch (err: any) {
+          setStatuses((prev) => ({ ...prev, [address]: { online: false, error: err?.message || 'Ping failed' } }));
+        }
+      })
+    );
+  }, []);
+
+  const refresh = useCallback(async () => {
     if (!instanceId) {
-      alert('Create and install a profile before starting Minecraft.');
+      setServers([]);
+      setLoading(false);
       return;
     }
-    alert(`Starting your real Minecraft profile. Join "${serverName}" from Minecraft's Multiplayer menu.`);
+    setLoading(true);
+    setError(null);
+    try {
+      const entries = await window.gravityAPI.listServers(instanceId);
+      setServers(entries);
+      pingAll(entries);
+    } catch (err: any) {
+      setError(err?.message || 'Could not read servers.dat for this profile.');
+    } finally {
+      setLoading(false);
+    }
+  }, [instanceId, pingAll]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const closeModal = () => {
+    setModal(null);
+    setEditingIndex(null);
+    setServerName('');
+    setServerIp('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!instanceId || !serverName.trim() || !serverIp.trim()) return;
+    setError(null);
+    try {
+      const updated =
+        modal === 'edit' && editingIndex !== null
+          ? await window.gravityAPI.updateServer(instanceId, editingIndex, serverName.trim(), serverIp.trim())
+          : await window.gravityAPI.addServer(instanceId, serverName.trim(), serverIp.trim());
+      setServers(updated);
+      closeModal();
+      pingAll(updated);
+    } catch (err: any) {
+      setError(err?.message || 'Could not save the server.');
+    }
+  };
+
+  const handleDelete = async (entry: ServerEntry) => {
+    if (!instanceId) return;
+    if (!confirm(`Remove "${entry.name}" from this profile's server list?`)) return;
+    setError(null);
+    try {
+      setServers(await window.gravityAPI.deleteServer(instanceId, entry.index));
+    } catch (err: any) {
+      setError(err?.message || 'Could not remove the server.');
+    }
+  };
+
+  const handleJoin = () => {
+    if (!instanceId) return;
+    // Minecraft has no supported "join this server on boot" hook, so the profile
+    // is launched and the server is already in the in-game list.
     onLaunch(instanceId);
   };
 
-  const handleAddServerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!serverName.trim() || !serverIp.trim()) return;
-
-    const newServer: ServerDef = {
-      id: `server_${Date.now()}`,
-      name: serverName.trim(),
-      ip: serverIp.trim(),
-      motd: '✦ Newly added server ✦ Click to query status...',
-      players: '0/100',
-      ping: Math.floor(Math.random() * 50) + 15,
-      iconColor: '#' + Math.floor(Math.random()*16777215).toString(16),
-    };
-
-    setServers([...servers, newServer]);
-    setServerName('');
-    setServerIp('');
-    setShowAddModal(false);
-  };
-
-  const handleEditClick = (server: ServerDef) => {
-    setEditingId(server.id);
-    setServerName(server.name);
-    setServerIp(server.ip);
-    setShowEditModal(true);
-  };
-
-  const handleEditServerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId || !serverName.trim() || !serverIp.trim()) return;
-
-    setServers(servers.map((s) => (s.id === editingId ? { ...s, name: serverName.trim(), ip: serverIp.trim() } : s)));
-    setEditingId(null);
-    setServerName('');
-    setServerIp('');
-    setShowEditModal(false);
-  };
-
-  const handleDeleteServer = (id: string) => {
-    if (confirm('Delete this server from your quick access list?')) {
-      setServers(servers.filter((s) => s.id !== id));
-    }
-  };
-
-  const getPingColor = (p: number) => {
-    if (p < 25) return '#60FFAE';
-    if (p < 50) return '#FFDD73';
-    return '#FF4A5A';
-  };
-
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
       <header style={{ textAlign: 'center', marginBottom: '8px' }}>
         <h2 style={{ fontSize: '2.5rem', fontWeight: 700, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>GravityClient</h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '1.2rem', marginTop: '4px', fontWeight: 500 }}>Multiplayer Servers</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '1.2rem', marginTop: '4px', fontWeight: 500 }}>
+          Multiplayer Servers{instanceName ? ` — ${instanceName}` : ''}
+        </p>
       </header>
 
-      {/* Servers Table Glass Container */}
       <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: '340px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Server Connection Deck
           </span>
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-            {servers.length} server{servers.length !== 1 ? 's' : ''} listed
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              {loading ? 'Reading servers.dat…' : `${servers.length} server${servers.length !== 1 ? 's' : ''} saved`}
+            </span>
+            <button className="pill-btn" style={{ padding: '4px 14px', fontSize: '0.75rem', borderRadius: '100px' }} onClick={refresh} disabled={loading}>
+              Refresh &amp; Ping
+            </button>
+          </div>
         </div>
 
-        {/* Server List */}
+        {error && (
+          <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,74,90,0.1)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
+
+        {!instanceId && !loading && (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-muted)' }}>
+            Create a profile first — the server list is stored in the profile's game directory.
+          </div>
+        )}
+
         <div className="custom-scroller" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '360px', paddingRight: '4px' }}>
-          {servers.map((server) => (
-            <div
-              key={server.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '16px 24px',
-                borderRadius: '16px',
-                background: 'rgba(0, 0, 0, 0.2)',
-                border: '1px solid var(--color-border)',
-                gap: '16px',
-                transition: 'border-color 0.2s, background 0.2s',
-              }}
-              className="hover-bright"
-            >
-              {/* Server Custom Mock Avatar/Icon */}
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: `linear-gradient(135deg, ${server.iconColor} 0%, #202230 100%)`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 'bold', color: '#FFF', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}>
-                {server.name.substring(0, 2).toUpperCase()}
-              </div>
+          {servers.map((server) => {
+            const status = statuses[server.ip];
+            const isPending = status === 'pending';
+            const resolved = isPending ? undefined : (status as ServerStatus | undefined);
+            const favicon = resolved?.favicon || (server.icon ? `data:image/png;base64,${server.icon}` : undefined);
 
-              {/* Server details */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{server.name}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '10px' }}>{server.ip}</span>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
-                  {server.motd}
-                </div>
-              </div>
+            return (
+              <div
+                key={`${server.index}-${server.ip}`}
+                style={{
+                  display: 'flex', alignItems: 'center', padding: '16px 24px', borderRadius: '16px',
+                  background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--color-border)', gap: '16px',
+                  transition: 'border-color 0.2s, background 0.2s',
+                }}
+                className="hover-bright"
+              >
+                {favicon ? (
+                  <img
+                    src={favicon}
+                    alt=""
+                    style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)', imageRendering: 'pixelated' }}
+                  />
+                ) : (
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #45A29E 0%, #202230 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 'bold', color: '#FFF', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}>
+                    {server.name.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
 
-              {/* Status information */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0, paddingLeft: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--color-text-secondary)' }}>{server.players}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: getPingColor(server.ping), fontWeight: 'bold' }}>{server.ping}ms</span>
-                  {/* Miniature signal strength bar */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '10px' }}>
-                    <div style={{ width: '2px', height: '4px', background: getPingColor(server.ping) }} />
-                    <div style={{ width: '2px', height: '6px', background: server.ping < 50 ? getPingColor(server.ping) : 'rgba(255,255,255,0.2)' }} />
-                    <div style={{ width: '2px', height: '8px', background: server.ping < 25 ? getPingColor(server.ping) : 'rgba(255,255,255,0.2)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {server.name}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '10px', fontFamily: 'var(--font-mono)' }}>
+                      {server.ip}
+                    </span>
+                    {resolved?.version && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', padding: '1px 7px', borderRadius: '100px' }}>
+                        {resolved.version}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', color: resolved?.online === false ? 'var(--color-error)' : 'var(--color-text-muted)' }}>
+                    {isPending && 'Pinging server…'}
+                    {!isPending && resolved?.online && (resolved.motd || 'No MOTD advertised')}
+                    {!isPending && resolved && !resolved.online && `Offline — ${resolved.error ?? 'no response'}`}
+                    {!isPending && !resolved && 'Not pinged yet'}
                   </div>
                 </div>
-              </div>
 
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', flexShrink: 0 }}>
-                <button
-                  className="pill-btn primary"
-                  style={{ padding: '6px 16px', fontSize: '0.8rem', minWidth: '70px', borderRadius: '100px' }}
-                  onClick={() => handleJoinServer(server.name)}
-                >
-                  Join
-                </button>
-                <button
-                  className="pill-btn"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '100px' }}
-                  onClick={() => handleEditClick(server)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="pill-btn"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '100px', borderColor: 'rgba(255, 74, 90, 0.4)', color: 'var(--color-error)' }}
-                  onClick={() => handleDeleteServer(server.id)}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0, paddingLeft: '12px', minWidth: '96px' }}>
+                  {resolved?.online && (
+                    <>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                        {resolved.playersOnline ?? '?'}/{resolved.playersMax ?? '?'}
+                      </span>
+                      {resolved.latencyMs !== undefined && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: getPingColor(resolved.latencyMs), fontWeight: 'bold' }}>
+                            {resolved.latencyMs}ms
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '10px' }}>
+                            <div style={{ width: '2px', height: '4px', background: getPingColor(resolved.latencyMs) }} />
+                            <div style={{ width: '2px', height: '6px', background: resolved.latencyMs < 200 ? getPingColor(resolved.latencyMs) : 'rgba(255,255,255,0.2)' }} />
+                            <div style={{ width: '2px', height: '8px', background: resolved.latencyMs < 80 ? getPingColor(resolved.latencyMs) : 'rgba(255,255,255,0.2)' }} />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {isPending && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>…</span>}
+                </div>
 
-          {servers.length === 0 && (
+                <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', flexShrink: 0 }}>
+                  <button className="pill-btn primary" style={{ padding: '6px 16px', fontSize: '0.8rem', minWidth: '70px', borderRadius: '100px' }} onClick={handleJoin}>
+                    Join
+                  </button>
+                  <button
+                    className="pill-btn"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '100px' }}
+                    onClick={() => { setModal('edit'); setEditingIndex(server.index); setServerName(server.name); setServerIp(server.ip); }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="pill-btn"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '100px', borderColor: 'rgba(255, 74, 90, 0.4)', color: 'var(--color-error)' }}
+                    onClick={() => handleDelete(server)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {!loading && instanceId && servers.length === 0 && !error && (
             <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-muted)', fontSize: '1rem' }}>
-              No multiplayer servers added yet. Click "Add Server" to expand lists.
+              No servers saved for this profile yet.
+              <div style={{ fontSize: '0.85rem', marginTop: '8px' }}>
+                Anything you add here is written to servers.dat and appears in-game.
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Navigation Buttons at the bottom */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
         <button className="pill-btn" style={{ minWidth: '180px' }} onClick={onBack}>
           Back to Main
         </button>
-        <button className="pill-btn primary" style={{ minWidth: '220px' }} onClick={() => setShowAddModal(true)}>
+        <button className="pill-btn primary" style={{ minWidth: '220px' }} disabled={!instanceId} onClick={() => setModal('add')}>
           Add Server
         </button>
       </div>
 
-      {/* Modal: Add Server */}
-      {showAddModal && (
+      {modal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <form className="glass-panel" onSubmit={handleAddServerSubmit} style={{ padding: '32px', width: '400px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }} className="cyan-gradient-text">Add Server</h3>
-            
+          <form className="glass-panel" onSubmit={handleSubmit} style={{ padding: '32px', width: '420px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }} className="cyan-gradient-text">
+              {modal === 'edit' ? 'Edit Server' : 'Add Server'}
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              Saved straight into this profile's <code style={{ fontFamily: 'var(--font-mono)' }}>servers.dat</code>.
+            </p>
+
             <div className="form-group">
               <label>Server Name</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. Gravity Sandbox"
-                value={serverName}
-                onChange={(e) => setServerName(e.target.value)}
-                autoFocus
-                required
-              />
+              <input type="text" className="form-control" placeholder="e.g. Gravity Sandbox" value={serverName} onChange={(e) => setServerName(e.target.value)} autoFocus required />
             </div>
 
             <div className="form-group">
-              <label>Server IP Address</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. play.example.net"
-                value={serverIp}
-                onChange={(e) => setServerIp(e.target.value)}
-                required
-              />
+              <label>Server Address</label>
+              <input type="text" className="form-control" placeholder="play.example.net or 127.0.0.1:25565" value={serverIp} onChange={(e) => setServerIp(e.target.value)} required />
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>
+                Port is optional — SRV records are resolved automatically.
+              </p>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button type="button" className="glow-btn" onClick={() => setShowAddModal(false)}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
+              <button type="button" className="pill-btn" style={{ padding: '8px 18px', fontSize: '0.85rem' }} onClick={closeModal}>
                 Cancel
               </button>
-              <button type="submit" className="glow-btn filled">
-                Add Server
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Modal: Edit Server */}
-      {showEditModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <form className="glass-panel" onSubmit={handleEditServerSubmit} style={{ padding: '32px', width: '400px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }} className="cyan-gradient-text">Edit Server</h3>
-            
-            <div className="form-group">
-              <label>Server Name</label>
-              <input
-                type="text"
-                className="form-control"
-                value={serverName}
-                onChange={(e) => setServerName(e.target.value)}
-                autoFocus
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Server IP Address</label>
-              <input
-                type="text"
-                className="form-control"
-                value={serverIp}
-                onChange={(e) => setServerIp(e.target.value)}
-                required
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button type="button" className="glow-btn" onClick={() => { setShowEditModal(false); setEditingId(null); setServerName(''); setServerIp(''); }}>
-                Cancel
-              </button>
-              <button type="submit" className="glow-btn filled">
-                Save Changes
+              <button type="submit" className="pill-btn primary" style={{ padding: '8px 18px', fontSize: '0.85rem', borderRadius: '100px' }}>
+                {modal === 'edit' ? 'Save Changes' : 'Add Server'}
               </button>
             </div>
           </form>

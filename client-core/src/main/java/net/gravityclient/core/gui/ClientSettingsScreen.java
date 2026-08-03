@@ -4,53 +4,94 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
+import net.gravityclient.core.ClientCoreMod;
 import net.gravityclient.core.config.ClientCoreConfig;
 
 public class ClientSettingsScreen extends Screen {
     private final Screen parent;
-    private final ClientCoreConfig config;
+    private ClientCoreConfig config;
 
     public ClientSettingsScreen(Screen parent) {
         super(Text.literal("Gravity Client Settings"));
         this.parent = parent;
-        this.config = ClientCoreConfig.load();
+        this.config = ClientCoreMod.getConfig();
+        if (this.config == null) {
+            this.config = ClientCoreConfig.load();
+        }
     }
 
     @Override
     protected void init() {
         super.init();
 
-        // Add a back button
         int buttonWidth = 150;
         int buttonHeight = 20;
+        int centerX = this.width / 2;
+
+        // Pull in any changes the launcher wrote while the game was running.
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Reload from Launcher"), button -> {
+            this.config = ClientCoreMod.reloadConfig();
+        }).dimensions(centerX - buttonWidth - 5, this.height - 40, buttonWidth, buttonHeight).build());
+
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Back"), button -> {
             if (this.client != null) {
                 this.client.setScreen(this.parent);
             }
-        }).dimensions(this.width / 2 - buttonWidth / 2, this.height - 40, buttonWidth, buttonHeight).build());
+        }).dimensions(centerX + 5, this.height - 40, buttonWidth, buttonHeight).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Screen.render draws the background before the widgets in this version.
         super.render(context, mouseX, mouseY, delta);
 
-        // Draw background
-        this.renderBackground(context, mouseX, mouseY, delta);
+        int centerX = this.width / 2;
+        context.drawCenteredTextWithShadow(this.textRenderer, this.title, centerX, 20, 0x66FCF1);
+        context.drawCenteredTextWithShadow(
+            this.textRenderer,
+            Text.literal("LAUNCHER SYNCHRONIZATION STATUS: ACTIVE"),
+            centerX, 40, 0x4EAF0A
+        );
 
-        // Draw title
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0x66FCF1);
+        ClientCoreConfig.FpsSettings fps = this.config.fps;
+        int y = 62;
+        int spacing = 14;
 
-        // Draw active configurations synced with launcher
-        int yStart = 60;
-        int spacing = 18;
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("LAUNCHER SYNCHRONIZATION STATUS: ACTIVE"), this.width / 2, yStart, 0x4EAF0A);
-        
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Current Preset Theme: " + config.theme.toUpperCase()), this.width / 2, yStart + spacing * 2, 0xFFFFFF);
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("HUD Branding: " + (config.enableBranding ? "ENABLED" : "DISABLED")), this.width / 2, yStart + spacing * 3, 0xC5C6C7);
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Main Menu Customizer: " + (config.enableCustomMainMenu ? "ENABLED" : "DISABLED")), this.width / 2, yStart + spacing * 4, 0xC5C6C7);
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("FPS Meter on HUD: " + (config.renderFpsOnHUD ? "ENABLED" : "DISABLED")), this.width / 2, yStart + spacing * 5, 0xC5C6C7);
-        
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("In-game settings and overlay toggles can be configured in future passes."), this.width / 2, yStart + spacing * 8, 0x8B949E);
+        y = line(context, centerX, y, spacing, "Preset Theme: " + safeUpper(this.config.theme), 0xFFFFFF);
+        y = line(context, centerX, y, spacing, "HUD Branding: " + onOff(this.config.enableBranding), 0xC5C6C7);
+        y = line(context, centerX, y, spacing, "FPS Overlay: " + onOff(this.config.renderFpsOnHUD), 0xC5C6C7);
+        y = line(context, centerX, y, spacing,
+            "  Position: " + fps.position + "   Size: " + fps.fontSize + "px", 0x9AA4AE);
+        y = line(context, centerX, y, spacing,
+            "  Text: " + fps.textColor + "   Background: " + fps.background
+                + " @ " + fps.backgroundOpacity + "%", 0x9AA4AE);
+        y = line(context, centerX, y, spacing, "  Rolling Average: " + onOff(fps.showAverage), 0x9AA4AE);
+        y = line(context, centerX, y, spacing, "Debug Overlay: " + onOff(this.config.debugOverlay), 0xC5C6C7);
+
+        int modCount = this.config.enabledMods == null ? 0 : this.config.enabledMods.size();
+        y = line(context, centerX, y + 6, spacing, "Enabled launcher modules: " + modCount, 0xFFFFFF);
+        if (modCount > 0) {
+            line(context, centerX, y, spacing, String.join(", ", this.config.enabledMods), 0x8B949E);
+        }
+
+        context.drawCenteredTextWithShadow(
+            this.textRenderer,
+            Text.literal("Change these in the GravityClient launcher, then press Reload."),
+            centerX, this.height - 58, 0x8B949E
+        );
+    }
+
+    private int line(DrawContext context, int centerX, int y, int spacing, String text, int color) {
+        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(text), centerX, y, color);
+        return y + spacing;
+    }
+
+    private static String onOff(boolean value) {
+        return value ? "ENABLED" : "DISABLED";
+    }
+
+    private static String safeUpper(String value) {
+        return value == null ? "DEFAULT" : value.toUpperCase();
     }
 
     @Override

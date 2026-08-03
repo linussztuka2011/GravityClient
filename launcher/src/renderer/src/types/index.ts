@@ -107,6 +107,58 @@ export interface GlobalSettings {
   richAccounts?: RichAccount[];
 }
 
+export interface WorldSummary {
+  folderName: string;
+  name: string;
+  gameMode: string;
+  hardcore: boolean;
+  version: string;
+  lastPlayed: number;
+  sizeBytes: number;
+  cheats: boolean;
+  problem?: string;
+}
+
+export interface ServerEntry {
+  index: number;
+  name: string;
+  ip: string;
+  icon?: string;
+}
+
+export interface ServerStatus {
+  online: boolean;
+  motd?: string;
+  playersOnline?: number;
+  playersMax?: number;
+  version?: string;
+  latencyMs?: number;
+  favicon?: string;
+  error?: string;
+}
+
+export type SkinModel = 'classic' | 'slim';
+
+export interface SkinEntry {
+  id: string;
+  name: string;
+  model: SkinModel;
+  dataUri: string;
+  width: number;
+  height: number;
+  source: string;
+  addedAt: number;
+}
+
+export interface ActionResult<T = unknown> {
+  success: boolean;
+  canceled?: boolean;
+  error?: string;
+  skin?: SkinEntry;
+  settings?: T;
+  path?: string;
+}
+
 declare global {
   interface Window {
     gravityAPI: {
@@ -133,6 +185,33 @@ declare global {
       modrinthSearch(query: string, mcVersion?: string): Promise<any[]>;
       modrinthInstall(instanceId: string, projectId: string, mcVersion?: string): Promise<{ success: boolean; filename?: string; version?: string; error?: string }>;
       onModrinthInstallProgress(instanceId: string, projectId: string, callback: (percent: number) => void): () => void;
+
+      // Singleplayer worlds
+      listWorlds(instanceId: string): Promise<WorldSummary[]>;
+      renameWorld(instanceId: string, folderName: string, newName: string): Promise<void>;
+      deleteWorld(instanceId: string, folderName: string): Promise<void>;
+      duplicateWorld(instanceId: string, folderName: string): Promise<WorldSummary | null>;
+
+      // Multiplayer servers
+      listServers(instanceId: string): Promise<ServerEntry[]>;
+      addServer(instanceId: string, name: string, ip: string): Promise<ServerEntry[]>;
+      updateServer(instanceId: string, index: number, name: string, ip: string): Promise<ServerEntry[]>;
+      deleteServer(instanceId: string, index: number): Promise<ServerEntry[]>;
+      pingServer(address: string): Promise<ServerStatus>;
+
+      // Skins
+      listSkins(): Promise<SkinEntry[]>;
+      importSkinFromFile(): Promise<ActionResult>;
+      importSkinFromUrl(url: string): Promise<ActionResult>;
+      deleteSkin(id: string): Promise<void>;
+      applySkin(skinId: string, model: SkinModel): Promise<ActionResult>;
+      importActiveAccountSkin(): Promise<ActionResult>;
+
+      // OS integration
+      openGameDirectory(instanceId?: string): Promise<ActionResult>;
+      openExternal(url: string): Promise<ActionResult>;
+      importSettingsFile(): Promise<ActionResult<GlobalSettings>>;
+      exportSettingsFile(): Promise<ActionResult>;
     };
   }
 }

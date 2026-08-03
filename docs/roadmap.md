@@ -15,24 +15,37 @@ Establish repository layout, data formats, basic UI dashboards, and functional i
 
 ---
 
-## Phase 2: Active Minecraft Execution & Authentication (Next Steps)
+## Phase 2: Active Minecraft Execution & Authentication (Complete)
 Implement actual Microsoft OAuth login flows, Java/fabric installation, and launching capabilities.
 
-- [ ] **Microsoft OAuth & Session Management**:
-  - Implement standard OAuth/Device Code flows using a secure libraries (such as `msmc` or `node-minecraft-protocol` authentication layers).
-  - Securely persist session tokens in local platform keychains (e.g. keytar or safe platform secure stores), never storing passwords.
-- [ ] **Real Minecraft Runtime Downloading**:
-  - Orchestrate downloading official assets, client JARs, and Libraries from Mojang's metadata manifest endpoints.
-  - Implement full Fabric Loader bootloader resolution.
-- [ ] **Process Spawn & Arguments Execution**:
-  - Dynamically generate robust Java command-line startup parameters (memory allocations, classpath arguments, natives path resolution).
-  - Spawn the Minecraft process safely from the Electron main process and forward game output logs to the launcher's Task console.
+- [x] **Microsoft OAuth & Session Management**:
+  - Device Code flow through Xbox Live → XSTS → Minecraft Services, with silent refresh before launch. Passwords are never handled.
+  - **Outstanding**: tokens are still persisted in `settings.json`, not an OS keychain. See the open item in Phase 3.
+- [x] **Real Minecraft Runtime Downloading**:
+  - Fabric profiles are resolved by merging Mojang's version manifest with Fabric's loader profile, and compatible loader versions are checked at launch.
+- [x] **Process Spawn & Arguments Execution**:
+  - JVM parameters (memory, custom JRE path) are generated and Minecraft is spawned via `minecraft-launcher-core`, with output forwarded to the Task console.
+
+---
+
+## Phase 2b: Real Game Data in the Launcher (Complete)
+Replace placeholder UI listings with the game's own files.
+
+- [x] **NBT Codec**: gzip/zlib framing and modified UTF-8, preserving tag types so files round-trip without data loss.
+- [x] **Singleplayer Worlds**: parsed from `level.dat`; rename, duplicate and delete operate on the real `saves/` directory.
+- [x] **Multiplayer Servers**: `servers.dat` read/write plus live Server List Ping for MOTD, players, latency, favicon and SRV resolution.
+- [x] **Skins**: a real local PNG library with header validation, file/URL import, and Mojang upload for premium accounts.
+- [x] **Settings Handoff**: Mod-Menu and FPS settings are written to each profile's `config/gravity-client-core.json` and rendered in-game by the companion mod.
 
 ---
 
 ## Phase 3: In-Game Integration & Advanced Customizations
 Strengthen connection between the desktop launcher and the in-game Client-Core mod.
 
+- [ ] **Secure Token Storage**:
+  - Move Microsoft refresh/access tokens out of `settings.json` and into the OS credential store (Windows Credential Manager, macOS Keychain, Linux Secret Service), as `docs/legal-notes.md` requires.
+- [ ] **Remaining HUD Modules**:
+  - Only the FPS Counter is rendered in-game today. Keystrokes, Direction HUD, Armor Status and the rest are persisted to the mod config but not yet implemented in `client-core`.
 - [ ] **Cross-Process Local API Sync**:
   - Establish a secure local WebSocket server or IPC socket within the launcher.
   - Let the client-core Fabric mod connect in-game to read real-time launcher states, active profiles, and preset metadata.

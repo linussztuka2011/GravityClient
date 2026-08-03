@@ -62,5 +62,34 @@ contextBridge.exposeInMainWorld('gravityAPI', {
     return () => {
       ipcRenderer.removeListener(channel, listener);
     };
-  }
+  },
+
+  // Singleplayer worlds (real saves/ folder)
+  listWorlds: (instanceId: string) => ipcRenderer.invoke('worlds-list', instanceId),
+  renameWorld: (instanceId: string, folderName: string, newName: string) =>
+    ipcRenderer.invoke('world-rename', instanceId, folderName, newName),
+  deleteWorld: (instanceId: string, folderName: string) => ipcRenderer.invoke('world-delete', instanceId, folderName),
+  duplicateWorld: (instanceId: string, folderName: string) => ipcRenderer.invoke('world-duplicate', instanceId, folderName),
+
+  // Multiplayer servers (real servers.dat + live ping)
+  listServers: (instanceId: string) => ipcRenderer.invoke('servers-list', instanceId),
+  addServer: (instanceId: string, name: string, ip: string) => ipcRenderer.invoke('server-add', instanceId, name, ip),
+  updateServer: (instanceId: string, index: number, name: string, ip: string) =>
+    ipcRenderer.invoke('server-update', instanceId, index, name, ip),
+  deleteServer: (instanceId: string, index: number) => ipcRenderer.invoke('server-delete', instanceId, index),
+  pingServer: (address: string) => ipcRenderer.invoke('server-ping', address),
+
+  // Skins
+  listSkins: () => ipcRenderer.invoke('skins-list'),
+  importSkinFromFile: () => ipcRenderer.invoke('skin-import-file'),
+  importSkinFromUrl: (url: string) => ipcRenderer.invoke('skin-import-url', url),
+  deleteSkin: (id: string) => ipcRenderer.invoke('skin-delete', id),
+  applySkin: (skinId: string, model: 'classic' | 'slim') => ipcRenderer.invoke('skin-apply', skinId, model),
+  importActiveAccountSkin: () => ipcRenderer.invoke('skin-import-active-account'),
+
+  // OS integration
+  openGameDirectory: (instanceId?: string) => ipcRenderer.invoke('open-game-directory', instanceId),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  importSettingsFile: () => ipcRenderer.invoke('import-settings-file'),
+  exportSettingsFile: () => ipcRenderer.invoke('export-settings-file')
 });

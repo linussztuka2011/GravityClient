@@ -52,4 +52,13 @@ export class MinecraftPaths {
     }
     return confDir;
   }
+
+  /** Skins are shared across profiles, so they live beside the launcher data. */
+  static getSkinsDir(): string {
+    const skinsDir = join(this.getLauncherDataDir(), 'skins');
+    if (!fs.existsSync(skinsDir)) {
+      fs.mkdirSync(skinsDir, { recursive: true });
+    }
+    return skinsDir;
+  }
 }

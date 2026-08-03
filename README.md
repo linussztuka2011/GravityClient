@@ -31,11 +31,23 @@ npm run electron:dev
 ```
 
 #### 3. Compile Production Bundle:
-Builds optimized CSS assets and transpile TypeScript Main/Preload files:
+Type-checks both the renderer and main process, then builds CSS assets and transpiles the TypeScript Main/Preload files:
 ```bash
 cd launcher
 npm run build
 ```
+
+#### 4. Run Checks:
+```bash
+cd launcher
+npm run typecheck   # renderer + main process
+npm run build:main  # tests import the compiled output
+npm test            # service integration tests
+```
+
+The test suite exercises the code that touches real Minecraft data — the NBT
+codec, world and server file handling, skin validation and config syncing —
+including a mock server that speaks the actual Server List Ping protocol.
 
 ---
 
@@ -43,15 +55,15 @@ npm run build
 
 #### Requirements:
 - **Java Development Kit (JDK) 21**
-- **Gradle** (installed or resolved dynamically)
 
 #### 1. Compile the Fabric Mod:
 To compile classes and bundle the final `.jar` archive under `client-core/build/libs/`, run:
 ```bash
 cd client-core
-gradle build
+./gradlew build
 ```
-*(Note: If you have the Gradle Wrapper configured on your host, you can also run `./gradlew build`).*
+The Gradle wrapper is committed and pins the Gradle version that Fabric Loom 1.7
+requires — use it rather than a system-wide `gradle`, which may be too new.
 
 ---
 
@@ -105,8 +117,14 @@ gradle build
 - **Milestone 3 (Presets)**: Implemented Balanced, Performance, and Visual overlays with custom properties for Sodium and BetterF3.
 - **Milestone 4 (Launcher)**: Formulated an Electron-React-TS frame-less dashboard with active progress bars and terminal logs.
 - **Milestone 5 (Companion Mod)**: Fabric Java 21 initializers, right-shift GUI settings placeholder, and custom title screen branding mixins.
+- **Milestone 6 (Microsoft Auth & Launch)**: Device Code OAuth through to Minecraft Services, plus real process spawning via `minecraft-launcher-core`.
+- **Milestone 7 (Real Game Data)**: The screens that used to show placeholder rows now read and write the game's own files:
+  - **Singleplayer** parses each world's `level.dat` (gzipped NBT) for name, game mode, version, last-played and on-disk size, and performs real rename/duplicate/delete.
+  - **Multiplayer** reads and writes `servers.dat` and queries live status over Minecraft's Server List Ping protocol (MOTD, player counts, latency, favicon, SRV resolution).
+  - **Skins** are a real local PNG library with validation, file/URL import, and upload to Mojang for signed-in Microsoft accounts.
+  - **Mod-Menu / FPS settings** are written to each profile's `config/gravity-client-core.json`, and the companion mod renders the configured FPS overlay in-game.
 
-### Next Features (Roadmap Phase 2):
-1. **Microsoft OAuth Integration**: Leverage standardized login libraries to retrieve safe session tokens.
-2. **Java Process Spawner**: Dynamically generate JVM launch arguments and bootstrap native runtimes.
+### Next Features (Roadmap Phase 3):
+1. **Additional HUD Modules**: Only the FPS Counter is rendered in-game today; the remaining Mod-Menu modules are persisted but not yet implemented in `client-core`.
+2. **Live Launcher ↔ Mod Channel**: Replace the file-based config handoff with a local socket so settings apply without a restart.
 3. **Delta Sync Checks**: Auto-audit local SHA-1 hashes against Modrinth versions on startup to minimize bandwidth.

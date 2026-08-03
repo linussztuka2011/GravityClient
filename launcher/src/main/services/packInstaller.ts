@@ -5,7 +5,9 @@ import { ModrinthService } from './modrinthService.js';
 import { FabricInstaller } from './fabricInstaller.js';
 import { MinecraftPaths } from './minecraftPaths.js';
 import { InstanceService } from './instanceService.js';
-import { PackManifest, ModEntry, OptionalModGroup, InstanceConfig } from '../../renderer/src/types/index.js';
+import { SettingsService } from './settingsService.js';
+import { syncClientCoreConfig } from './clientConfigService.js';
+import { PackManifest, ModEntry, InstanceConfig } from '../../renderer/src/types/index.js';
 
 export class PackInstaller {
   /**
@@ -129,6 +131,15 @@ export class PackInstaller {
     );
     if (!presetOk) {
       return false;
+    }
+
+    // 5b. Overlay the user's live mod/HUD settings on top of the preset, so a
+    // freshly applied preset does not silently discard them.
+    try {
+      await syncClientCoreConfig(MinecraftPaths.getInstanceDir(instance.id), SettingsService.getSettings());
+      log('Applied launcher mod settings to the client-core config.', 'info');
+    } catch (err: any) {
+      log(`Could not sync client-core settings: ${err.message}`, 'warn');
     }
 
     // 6. Update instance configuration properties
