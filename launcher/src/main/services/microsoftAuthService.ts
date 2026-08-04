@@ -119,7 +119,22 @@ export class MicrosoftAuthService {
     });
 
     if (!mcLoginRes.ok) {
-      throw new Error(`Minecraft Services Auth failed: ${await mcLoginRes.text()}`);
+      const detail = await mcLoginRes.text().catch(() => '');
+
+      // Mojang gates api.minecraftservices.com behind an allowlist: Azure apps
+      // registered after the policy change must be approved before they can
+      // sign anyone in. Everything up to this point (Microsoft OAuth, Xbox Live,
+      // XSTS) succeeds regardless, so the raw response is very misleading.
+      if (mcLoginRes.status === 403 || detail.includes('Invalid app registration')) {
+        throw new Error(
+          'Microsoft sign-in worked, but Mojang has not approved this launcher\'s Azure application yet. ' +
+          'New Azure apps must be allowlisted before api.minecraftservices.com will accept them — ' +
+          'apply at https://aka.ms/mce-reviewappid and retry once the application is approved. ' +
+          'Offline accounts continue to work in the meantime.'
+        );
+      }
+
+      throw new Error(`Minecraft Services Auth failed: ${detail || mcLoginRes.statusText}`);
     }
 
     const mcLoginJson = await mcLoginRes.json() as any;
