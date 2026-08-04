@@ -1,0 +1,9 @@
+{
+  "render_distance": 6,
+  "simulation_distance": 6,
+  "graphics_quality": "FAST",
+  "clouds_quality": "OFF",
+  "use_compact_vertex_format": true,
+  "allow_direct_memory_access": true,
+  "enable_vbo_reuse": true
+}

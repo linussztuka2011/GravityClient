@@ -1,0 +1,22 @@
+{
+  "id": "performance",
+  "name": "Maximum Performance",
+  "description": "Designed for maximum possible frame-rates. Cuts render distances, optimizes particle updates, and displays only essential HUD stats.",
+  "managedFiles": [
+    {
+      "source": "config/sodium-options.json",
+      "destination": "config/sodium-options.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/betterf3-config.json",
+      "destination": "config/betterf3-config.json",
+      "overwrite": true
+    },
+    {
+      "source": "config/gravity-client-core.json",
+      "destination": "config/gravity-client-core.json",
+      "overwrite": true
+    }
+  ]
+}
