@@ -1,6 +1,8 @@
 import type { RichAccount } from './settingsService.js';
 
-const CLIENT_ID = '9a4086b2-7c1c-4b35-a789-da4c015b65d6'; // Public registered Client ID for Minecraft Auth
+// Azure AD application (client) ID for GravityClient Local, registered under the
+// project owner's tenant with personal Microsoft accounts enabled.
+const CLIENT_ID = '7246df34-2ecc-418d-8ba4-01a119a6c8ae';
 const SCOPE = 'XboxLive.signin offline_access';
 
 export class MicrosoftAuthService {
