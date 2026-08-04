@@ -91,7 +91,6 @@ export interface GlobalSettings {
   activeProfileId: string;
   activeSkin: string;
   enabledMods: string[];
-  meteorEnabled: boolean;
   fpsSettings: {
     position: string;
     color: string;

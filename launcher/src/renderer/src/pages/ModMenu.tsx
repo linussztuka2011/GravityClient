@@ -178,19 +178,6 @@ export const ModMenu: React.FC<ModMenuProps> = ({
         <button className="pill-btn" style={{ minWidth: '160px' }} onClick={onNavigateToModrinth}>Download More Mods</button>
         <button className="pill-btn" style={{ minWidth: '160px' }} onClick={onBack}>Back</button>
         <button className="pill-btn" style={{ minWidth: '160px' }} onClick={handleResetToDefault}>Reset to Default</button>
-        <button
-          className="pill-btn primary"
-          style={{
-            minWidth: '200px',
-            background: settings.meteorEnabled
-              ? 'linear-gradient(135deg, #FF4B5C 0%, #FA895E 100%)'
-              : 'linear-gradient(135deg, var(--color-accent) 0%, #FA895E 100%)',
-            borderColor: settings.meteorEnabled ? '#FF4B5C' : 'var(--color-accent)',
-          }}
-          onClick={() => onSaveSettings({ ...settings, meteorEnabled: !settings.meteorEnabled })}
-        >
-          {settings.meteorEnabled ? 'Gravity' : 'Antigravity'}
-        </button>
       </div>
     </div>
   );
