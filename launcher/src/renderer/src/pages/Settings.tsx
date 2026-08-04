@@ -73,8 +73,8 @@ export const Settings: React.FC<SettingsProps> = ({
         <button className="settings-grid-btn" onClick={() => onNavigateToTab('mod_menu')}>
           Mod-Menu
         </button>
-        <button className="settings-grid-btn" onClick={() => setActiveModal('antigravity')}>
-          {settings.meteorEnabled ? 'Gravity' : 'Antigravity'}
+        <button className="settings-grid-btn" onClick={() => setActiveModal('advanced')}>
+          Advanced
         </button>
         <button className="settings-grid-btn" onClick={() => setActiveModal('video_settings')}>
           Video-Settings
@@ -122,26 +122,12 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Antigravity Modal (Easter Egg + Developer Settings) */}
-      {activeModal === 'antigravity' && (
+      {/* Advanced Modal (Developer Settings) */}
+      {activeModal === 'advanced' && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div className="glass-panel" style={{ padding: '32px', width: '500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="cyan-gradient-text">✦ Antigravity Engine ✦</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
-              When enabled, the launcher downloads the latest Meteor Client snapshot into the active profile's
-              mods folder at launch, and removes it again when disabled. Nothing else about the profile changes.
-            </p>
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Activate Meteor Client</span>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Injects Meteor Client (utility mod) into client container mods folder.</p>
-                </div>
-                <div className={`toggle-switch ${settings.meteorEnabled ? 'active' : ''}`} onClick={() => handleSaveSubState({ meteorEnabled: !settings.meteorEnabled })}>
-                  <div className="toggle-switch-handle" />
-                </div>
-              </div>
-
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }} className="cyan-gradient-text">Advanced</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Verbose Debug Logs</span>

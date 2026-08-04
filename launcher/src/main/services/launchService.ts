@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import pkg from 'minecraft-launcher-core';
 import { MinecraftPaths } from './minecraftPaths.js';
 import { SettingsService } from './settingsService.js';
@@ -64,23 +63,7 @@ export class LaunchService {
       return { success: false, message: 'Fabric version profile setup failed.' };
     }
 
-    // 3. Sync Antigravity Mode (Meteor Client integration)
-    progress(30, 'Syncing Antigravity utilities');
-    const modsDir = MinecraftPaths.getInstanceModsDir(instanceId);
-
-    if (settings.meteorEnabled) {
-      log('Antigravity Mode is ENABLED. Ensuring Meteor Client is loaded...', 'info');
-      try {
-        await this.syncMeteorClient(modsDir, log);
-      } catch (err: any) {
-        log(`Meteor Client sync warning: ${err.message}. Launching client anyway.`, 'warn');
-      }
-    } else {
-      log('Antigravity Mode is DISABLED. Purging Meteor Client jars...', 'info');
-      this.purgeMeteorClient(modsDir, log);
-    }
-
-    // 4. Hand the current mod/HUD settings to the companion mod before it loads.
+    // 3. Hand the current mod/HUD settings to the companion mod before it loads.
     progress(45, 'Syncing client-core configuration');
     try {
       const configPath = await syncClientCoreConfig(MinecraftPaths.getInstanceDir(instanceId), settings);
@@ -89,7 +72,7 @@ export class LaunchService {
       log(`Could not write client-core config: ${err.message}. The mod will use its previous settings.`, 'warn');
     }
 
-    // 5. Construct launching configurations
+    // 4. Construct launching configurations
     progress(50, 'Assembling JVM execution parameters');
 
     const launcher = new Client();
@@ -228,90 +211,6 @@ export class LaunchService {
         success: false,
         message: `Launch error: ${err.message}`
       };
-    }
-  }
-
-  /**
-   * Deletes any Meteor Client jar files from the mods folder.
-   */
-  private static purgeMeteorClient(modsDir: string, log: (msg: string, level: any) => void): void {
-    if (!fs.existsSync(modsDir)) return;
-    try {
-      const files = fs.readdirSync(modsDir);
-      for (const file of files) {
-        if (file.toLowerCase().includes('meteor-client') && file.endsWith('.jar')) {
-          const filePath = path.join(modsDir, file);
-          fs.unlinkSync(filePath);
-          log(`Successfully deleted Meteor Client JAR: ${file}`, 'info');
-        }
-      }
-    } catch (err: any) {
-      log(`Error purging Meteor Client jars: ${err.message}`, 'warn');
-    }
-  }
-
-  /**
-   * Downloads or syncs the latest compatible Meteor Client Maven snapshot JAR file.
-   */
-  private static async syncMeteorClient(modsDir: string, log: (msg: string, level: any) => void): Promise<void> {
-    if (!fs.existsSync(modsDir)) {
-      fs.mkdirSync(modsDir, { recursive: true });
-    }
-
-    // 1. Scan for existing meteor client JAR to avoid redundant download
-    const files = fs.readdirSync(modsDir);
-    const existingJar = files.find((file) => file.toLowerCase().includes('meteor-client') && file.endsWith('.jar'));
-    if (existingJar) {
-      log(`Found existing Meteor Client jar: ${existingJar}. Sync skip.`, 'info');
-      return;
-    }
-
-    const metadataUrl = 'https://maven.meteordev.org/snapshots/meteordevelopment/meteor-client/0.6.0-SNAPSHOT/maven-metadata.xml';
-    log(`Fetching latest Meteor Snapshot metadata XML from: ${metadataUrl}`, 'info');
-
-    try {
-      const response = await fetch(metadataUrl);
-      if (!response.ok) {
-        throw new Error(`Maven Server returned status ${response.status}`);
-      }
-
-      const xmlText = await response.text();
-      const timestampMatch = xmlText.match(/<timestamp>([^<]+)<\/timestamp>/);
-      const buildNumberMatch = xmlText.match(/<buildNumber>([^<]+)<\/buildNumber>/);
-
-      if (!timestampMatch || !buildNumberMatch) {
-        throw new Error('Failed to parse snapshot timestamp/buildNumber from Maven metadata');
-      }
-
-      const timestamp = timestampMatch[1];
-      const buildNumber = buildNumberMatch[1];
-      const jarName = `meteor-client-0.6.0-${timestamp}-${buildNumber}.jar`;
-      const jarUrl = `https://maven.meteordev.org/snapshots/meteordevelopment/meteor-client/0.6.0-SNAPSHOT/${jarName}`;
-
-      log(`Metadata resolved latest snapshot: ${jarName}`, 'info');
-      log(`Downloading snapshot from: ${jarUrl}`, 'info');
-
-      const jarRes = await fetch(jarUrl);
-      if (!jarRes.ok) {
-        throw new Error(`Failed to download JAR: Server returned ${jarRes.status}`);
-      }
-
-      const buffer = await jarRes.arrayBuffer();
-      const destPath = path.join(modsDir, jarName);
-      fs.writeFileSync(destPath, Buffer.from(buffer));
-      log(`Meteor Client Snapshot downloaded successfully and saved to: ${jarName}!`, 'info');
-    } catch (err: any) {
-      log(`Failed to download Meteor from Maven: ${err.message}. Building/Using offline resilient mod fallback stub.`, 'warn');
-      
-      // Zero-crash robust offline stub jar payload creation
-      const fallbackJarPath = path.join(modsDir, 'meteor-client-0.6.0-SNAPSHOT-offline-stub.jar');
-      if (!fs.existsSync(fallbackJarPath)) {
-        // Write a small stub mod jar payload (basically an empty file or dummy content)
-        fs.writeFileSync(fallbackJarPath, Buffer.from([]));
-        log(`Offline fallback stub jar written to: ${path.basename(fallbackJarPath)}`, 'info');
-      } else {
-        log('Offline fallback stub jar already exists.', 'info');
-      }
     }
   }
 }

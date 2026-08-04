@@ -18,7 +18,6 @@ export interface GlobalSettings {
   activeProfileId: string;
   activeSkin: string;
   enabledMods: string[];
-  meteorEnabled: boolean;
   fpsSettings: {
     position: string;
     color: string;
@@ -42,7 +41,6 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   // Holds a skin library id once the user picks one; empty means "default skin".
   activeSkin: '',
   enabledMods: ['FPS Counter', 'Ping Display', 'ToggleSprint/Sneak', 'Direction HUD', 'Armor Status'],
-  meteorEnabled: false,
   fpsSettings: {
     position: 'Top Left',
     color: '#FFFFFF',

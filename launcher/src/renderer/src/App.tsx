@@ -20,7 +20,6 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   activeProfileId: '',
   activeSkin: '',
   enabledMods: ['FPS Counter', 'Ping Display', 'ToggleSprint/Sneak', 'Direction HUD', 'Armor Status'],
-  meteorEnabled: false,
   fpsSettings: {
     position: 'Top Left',
     color: '#FFFFFF',
