@@ -268,12 +268,16 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="glass-panel" style={{ padding: '32px', width: '450px', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }} className="cyan-gradient-text">Ecosystem Credits</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.95rem', color: 'var(--color-text-secondary)', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px' }}>
-              <div><strong>Launcher Engine:</strong> Gravity Launcher TS</div>
-              <div><strong>Core Graphics:</strong> Sunset Glassmorphic Suite</div>
-              <div><strong>Developer:</strong> Antigravity AI</div>
-              <div><strong>Sponsor:</strong> Google DeepMind Advanced Agentic Coding</div>
-              <div><strong>Ecosystem Version:</strong> v1.0.0-PRO</div>
+              <div><strong>Launcher:</strong> Electron, React, TypeScript, Vite</div>
+              <div><strong>Companion mod:</strong> Fabric Loader, Java 21</div>
+              <div><strong>Mod distribution:</strong> Modrinth API</div>
+              <div><strong>Version:</strong> v1.0.0</div>
             </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
+              Third-party mods are downloaded from Modrinth under their own licences, which are listed in
+              the pack manifest.
+            </p>
             <button className="pill-btn primary" onClick={() => setActiveModal(null)}>Close</button>
           </div>
         </div>
