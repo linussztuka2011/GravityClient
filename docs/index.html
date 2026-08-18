@@ -184,11 +184,11 @@
     <li><strong>No passwords are collected, transmitted or stored.</strong> Authentication happens entirely on Microsoft's own pages via the device code flow.</li>
     <li><strong>No servers are operated by this project.</strong> There is no backend, no account system and no database. The launcher talks only to Microsoft, Mojang, Fabric and Modrinth.</li>
     <li><strong>No telemetry or analytics.</strong> No usage data, crash reports or identifiers are collected or transmitted anywhere.</li>
-    <li><strong>Tokens stay on the player's own computer.</strong> The Minecraft access token and Microsoft refresh token are written to the launcher's local data directory and used only to launch the game and to perform actions the player explicitly requests.</li>
+    <li><strong>Tokens stay on the player's own computer, encrypted at rest.</strong> The Minecraft access token and Microsoft refresh token are kept in a dedicated store encrypted with an operating-system-backed key (Electron <code>safeStorage</code>: DPAPI on Windows, Keychain on macOS, Secret Service on Linux), never in the plain configuration file, and never exposed to the launcher's UI process. They are used only to launch the game and to perform actions the player explicitly requests.</li>
     <li><strong>Nothing is shared with third parties.</strong> No data of any kind leaves the player's machine except the direct API calls listed above.</li>
   </ul>
   <div class="note">
-    <p><strong>Planned improvement.</strong> Session tokens are currently stored in the launcher's local configuration file. Moving them into the operating system credential store (Windows Credential Manager, macOS Keychain, Linux Secret Service) is a tracked item on the project roadmap.</p>
+    <p><strong>Note.</strong> On systems where no OS keyring is available (some minimal Linux setups), the token store falls back to an unencrypted file with owner-only permissions and logs a warning; on Windows, macOS and desktop Linux the store is always encrypted.</p>
   </div>
 </section>
 

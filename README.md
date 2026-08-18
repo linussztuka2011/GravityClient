@@ -123,6 +123,7 @@ requires — use it rather than a system-wide `gradle`, which may be too new.
   - **Multiplayer** reads and writes `servers.dat` and queries live status over Minecraft's Server List Ping protocol (MOTD, player counts, latency, favicon, SRV resolution).
   - **Skins** are a real local PNG library with validation, file/URL import, and upload to Mojang for signed-in Microsoft accounts.
   - **Mod-Menu / FPS settings** are written to each profile's `config/gravity-client-core.json`, and the companion mod renders the configured FPS overlay in-game.
+- **Milestone 8 (Secure Token Storage)**: Microsoft/Minecraft session tokens live in a dedicated store encrypted with Electron `safeStorage` (OS-backed key), never in `settings.json` and never in the renderer process; plaintext tokens from older versions are migrated automatically.
 
 ### Next Features (Roadmap Phase 3):
 1. **Additional HUD Modules**: Only the FPS Counter is rendered in-game today; the remaining Mod-Menu modules are persisted but not yet implemented in `client-core`.

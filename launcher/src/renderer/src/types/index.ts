@@ -75,13 +75,15 @@ export interface TaskStatus {
   logs: LogEntry[];
 }
 
+/**
+ * The renderer's view of an account. Session tokens deliberately do not appear
+ * here: the main process keeps them in an encrypted store and only ever sends
+ * the profile fields across the IPC boundary.
+ */
 export interface RichAccount {
   name: string; // Minecraft Username
   uuid: string; // Minecraft UUID
   type: 'offline' | 'microsoft';
-  accessToken?: string; // Minecraft Access Token
-  refreshToken?: string; // Microsoft Refresh Token
-  expiresAt?: number; // Expiration timestamp for Minecraft Access Token
 }
 
 export interface GlobalSettings {

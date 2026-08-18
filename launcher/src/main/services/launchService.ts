@@ -6,6 +6,7 @@ import { InstanceService } from './instanceService.js';
 import { FabricInstaller } from './fabricInstaller.js';
 import { MicrosoftAuthService } from './microsoftAuthService.js';
 import { syncClientCoreConfig } from './clientConfigService.js';
+import { getSecureTokenStore, hydrateAccount } from './secureTokenStore.js';
 
 // Resolve Client from MCLC ESM wrapper
 // @ts-ignore
@@ -95,18 +96,28 @@ export class LaunchService {
       if (richAcc && richAcc.type === 'microsoft') {
         log(`Premium account identified: ${richAcc.name}. Validating credentials...`, 'info');
         try {
+          // Tokens live in the encrypted store, not in settings.json.
+          const store = getSecureTokenStore();
+          richAcc = hydrateAccount(richAcc, store?.getTokens(richAcc.name));
+
           const now = Date.now();
           if (!richAcc.accessToken || !richAcc.expiresAt || now >= richAcc.expiresAt) {
             log(`Minecraft Access Token is expired. Initiating silent refresh...`, 'info');
             const refreshed = await MicrosoftAuthService.refreshAccount(richAcc);
-            
-            // Persist the refreshed tokens immediately
-            const updatedRich = (settings.richAccounts || []).map((a) => a.name === refreshed.name ? refreshed : a);
+
+            // Persist immediately: tokens into the store, profile into settings
+            // (saveSettings strips any token fields on the way to disk).
+            store?.setTokens(refreshed.name, {
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken,
+              expiresAt: refreshed.expiresAt,
+            });
+            const updatedRich = (settings.richAccounts || []).map((a) => a.name === richAcc!.name ? refreshed : a);
             SettingsService.saveSettings({
               ...settings,
               richAccounts: updatedRich
             });
-            
+
             richAcc = refreshed;
             log(`Silent credentials refresh completed successfully!`, 'info');
           }

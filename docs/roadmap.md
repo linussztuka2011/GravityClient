@@ -20,7 +20,7 @@ Implement actual Microsoft OAuth login flows, Java/fabric installation, and laun
 
 - [x] **Microsoft OAuth & Session Management**:
   - Device Code flow through Xbox Live → XSTS → Minecraft Services, with silent refresh before launch. Passwords are never handled.
-  - **Outstanding**: tokens are still persisted in `settings.json`, not an OS keychain. See the open item in Phase 3.
+  - Session tokens are encrypted at rest via Electron `safeStorage` (OS-backed key) in a dedicated store; they never appear in `settings.json` and never cross into the renderer process.
 - [x] **Real Minecraft Runtime Downloading**:
   - Fabric profiles are resolved by merging Mojang's version manifest with Fabric's loader profile, and compatible loader versions are checked at launch.
 - [x] **Process Spawn & Arguments Execution**:
@@ -42,8 +42,8 @@ Replace placeholder UI listings with the game's own files.
 ## Phase 3: In-Game Integration & Advanced Customizations
 Strengthen connection between the desktop launcher and the in-game Client-Core mod.
 
-- [ ] **Secure Token Storage**:
-  - Move Microsoft refresh/access tokens out of `settings.json` and into the OS credential store (Windows Credential Manager, macOS Keychain, Linux Secret Service), as `docs/legal-notes.md` requires.
+- [x] **Secure Token Storage**:
+  - Tokens moved out of `settings.json` into `secure-tokens.bin`, encrypted with Electron `safeStorage` (Windows DPAPI, macOS Keychain, Linux Secret Service) and written with owner-only permissions. Existing plaintext tokens are migrated automatically on first start.
 - [ ] **Remaining HUD Modules**:
   - Only the FPS Counter is rendered in-game today. Keystrokes, Direction HUD, Armor Status and the rest are persisted to the mod config but not yet implemented in `client-core`.
 - [ ] **Cross-Process Local API Sync**:
