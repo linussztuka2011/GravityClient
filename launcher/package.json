@@ -1,7 +1,14 @@
 {
   "name": "gravity-launcher",
   "version": "1.0.0",
-  "description": "Private premium desktop launcher for GravityClient",
+  "description": "Open-source Minecraft: Java Edition launcher with performance mod presets and isolated profiles",
+  "author": "Linus Sztuka",
+  "license": "MIT",
+  "homepage": "https://linussztuka2011.github.io/GravityClient/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linussztuka2011/GravityClient.git"
+  },
   "type": "module",
   "main": "out/main/main.js",
   "scripts": {
@@ -12,8 +19,51 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.main.json --noEmit",
     "test": "node --test test/*.test.mjs",
     "build": "npm run typecheck && npm run build:main && npm run build:preload && npm run build:renderer",
+    "dist": "npm run build && electron-builder --publish never",
     "start": "npm run build:main && npm run build:preload && electron . --no-sandbox",
     "electron:dev": "npm run build:main && npm run build:preload && electron . --no-sandbox"
+  },
+  "build": {
+    "appId": "net.gravityclient.launcher",
+    "productName": "GravityClient",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../packs",
+        "to": "packs"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Game",
+      "maintainer": "Linus Sztuka"
+    }
   },
   "dependencies": {
     "minecraft-launcher-core": "^3.18.2",
@@ -25,6 +75,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^42.4.1",
+    "electron-builder": "^26.0.12",
     "typescript": "^5.4.5",
     "vite": "^7.3.5"
   }

@@ -24,9 +24,14 @@ export class ConfigPresetService {
    * Resolves the packs directory in the workspace root.
    */
   static getPacksDir(): string {
-    // In dev, compiled file is under launcher/out/main/main.js or similar
-    // We search the tree, falling back to process cwd relative lookups.
+    // Packaged builds ship packs/ as an electron-builder extraResource next to
+    // the asar, exposed via process.resourcesPath. In dev that variable points
+    // into node_modules/electron and contains no packs/, so the existsSync
+    // checks below fall through to the workspace-relative candidates.
+    const resourcesPath: string | undefined = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+
     const pathsToTry = [
+      ...(resourcesPath ? [path.join(resourcesPath, 'packs')] : []),
       path.join(__dirname, '..', '..', '..', 'packs'),
       path.join(process.cwd(), '..', 'packs'),
       path.join(process.cwd(), 'packs'),
