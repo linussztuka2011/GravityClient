@@ -20,12 +20,22 @@ public class ClientCoreConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File configFile;
 
+    /** Kept in sync with DEFAULT_SETTINGS.enabledMods in the launcher. */
+    private static final List<String> DEFAULT_ENABLED_MODS = List.of(
+        "FPS Counter", "Ping Display", "ToggleSprint/Sneak", "Direction HUD", "Armor Status"
+    );
+
     public String theme = "cyan";
     public boolean enableBranding = true;
     public boolean enableCustomMainMenu = true;
     public boolean debugOverlay = false;
     public boolean renderFpsOnHUD = true;
-    public List<String> enabledMods = new ArrayList<>();
+    /**
+     * Mirrors the launcher's default module selection, so the mod still shows
+     * something sensible if the jar is installed without the launcher ever
+     * having written a config.
+     */
+    public List<String> enabledMods = new ArrayList<>(DEFAULT_ENABLED_MODS);
     public FpsSettings fps = new FpsSettings();
 
     /** Mirrors the launcher's "Mod-Settings: FPS Counter" screen. */

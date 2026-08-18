@@ -45,7 +45,9 @@ Strengthen connection between the desktop launcher and the in-game Client-Core m
 - [ ] **Secure Token Storage**:
   - Move Microsoft refresh/access tokens out of `settings.json` and into the OS credential store (Windows Credential Manager, macOS Keychain, Linux Secret Service), as `docs/legal-notes.md` requires.
 - [ ] **Remaining HUD Modules**:
-  - Only the FPS Counter is rendered in-game today. Keystrokes, Direction HUD, Armor Status and the rest are persisted to the mod config but not yet implemented in `client-core`.
+  - Implemented in `client-core`: FPS Counter, Ping Display, Direction HUD, Armor Status and Keystrokes, driven by a module registry gated on the launcher's `enabledMods` list.
+  - Still launcher-only toggles: ToggleSprint/Sneak, Potion Effects, Hitbox Display, Item Physics, Chat Filters, Zoom, Item Filters, and the Hypixel/Skyblock add-ons.
+  - Per-module position and colour settings (the launcher only exposes styling for the FPS Counter today).
 - [ ] **Cross-Process Local API Sync**:
   - Establish a secure local WebSocket server or IPC socket within the launcher.
   - Let the client-core Fabric mod connect in-game to read real-time launcher states, active profiles, and preset metadata.
