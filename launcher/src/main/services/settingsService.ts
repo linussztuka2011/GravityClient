@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { join } from 'path';
 import { MinecraftPaths } from './minecraftPaths.js';
+import { sanitizeSettings } from './secureTokenStore.js';
 
 export interface RichAccount {
   name: string; // Minecraft Username
@@ -85,6 +86,11 @@ export class SettingsService {
 
   static saveSettings(settings: GlobalSettings): void {
     const file = this.getSettingsFile();
-    fs.writeFileSync(file, JSON.stringify(settings, null, 2), 'utf8');
+    // Session tokens never touch settings.json — they live in the encrypted
+    // SecureTokenStore. Stripping here covers every call site at once.
+    fs.writeFileSync(file, JSON.stringify(sanitizeSettings(settings), null, 2), {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
   }
 }

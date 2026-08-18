@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog, safeStorage } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { InstanceService } from './services/instanceService.js';
@@ -13,6 +13,15 @@ import { syncClientCoreConfig } from './services/clientConfigService.js';
 import * as WorldService from './services/worldService.js';
 import * as ServerService from './services/serverService.js';
 import * as SkinService from './services/skinService.js';
+import {
+  initSecureTokenStore,
+  getSecureTokenStore,
+  extractTokensFromSettings,
+  sanitizeAccount,
+  hydrateAccount,
+  hasTokens,
+} from './services/secureTokenStore.js';
+import type { RichAccount } from './services/settingsService.js';
 
 
 // Resolve directory name for ESM stability
@@ -58,7 +67,39 @@ function createWindow() {
   });
 }
 
+/**
+ * Boots the encrypted token store and, once, moves any tokens a previous
+ * version left in plaintext settings.json into it.
+ */
+function setupSecureTokenStore() {
+  const store = initSecureTokenStore(
+    path.join(MinecraftPaths.getLauncherDataDir(), 'secure-tokens.bin'),
+    {
+      isAvailable: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (plain) => safeStorage.encryptString(plain),
+      decrypt: (cipher) => safeStorage.decryptString(cipher),
+    }
+  );
+
+  try {
+    const settings = SettingsService.getSettings();
+    const legacyTokens = extractTokensFromSettings(settings);
+    const names = Object.keys(legacyTokens);
+    if (names.length > 0) {
+      for (const name of names) {
+        store.setTokens(name, legacyTokens[name]);
+      }
+      // saveSettings sanitizes, so this rewrite drops the plaintext tokens.
+      SettingsService.saveSettings(settings);
+      console.log(`[SecureTokenStore] Migrated tokens for ${names.length} account(s) out of settings.json.`);
+    }
+  } catch (err: any) {
+    console.error('[SecureTokenStore] Token migration failed:', err.message);
+  }
+}
+
 app.whenReady().then(() => {
+  setupSecureTokenStore();
   setupIpcHandlers();
   createWindow();
 
@@ -83,6 +124,15 @@ function setupIpcHandlers() {
 
   ipcMain.handle('save-settings', async (_event, settings) => {
     SettingsService.saveSettings(settings);
+    // Deleting an account in the UI must also drop its stored session tokens.
+    try {
+      const names = Array.isArray(settings?.richAccounts)
+        ? settings.richAccounts.map((a: RichAccount) => a?.name).filter(Boolean)
+        : [];
+      getSecureTokenStore()?.pruneTo(names);
+    } catch (err: any) {
+      console.error('Failed to prune secure token store:', err.message);
+    }
     // Push mod/HUD settings into every profile so the companion mod picks them
     // up on the next launch regardless of which profile is started.
     await Promise.all(
@@ -192,8 +242,22 @@ function setupIpcHandlers() {
   ipcMain.handle('microsoft-login-poll', async (_event, deviceCode: string, interval: number) => {
     try {
       await MicrosoftAuthService.pollDeviceToken(deviceCode, interval, (status, details) => {
+        // Tokens stay in the main process: on success they go straight into
+        // the encrypted store, and the renderer only ever sees the profile.
+        let safeDetails = details;
+        if (status === 'SUCCESS' && details && typeof details === 'object') {
+          const account = details as RichAccount;
+          if (hasTokens(account)) {
+            getSecureTokenStore()?.setTokens(account.name, {
+              accessToken: account.accessToken,
+              refreshToken: account.refreshToken,
+              expiresAt: account.expiresAt,
+            });
+          }
+          safeDetails = sanitizeAccount(account);
+        }
         if (mainWindow) {
-          mainWindow.webContents.send('microsoft-login-status', { status, details });
+          mainWindow.webContents.send('microsoft-login-status', { status, details: safeDetails });
         }
       });
       return true;
@@ -304,29 +368,55 @@ function setupIpcHandlers() {
 
   ipcMain.handle('skin-delete', (_event, id: string) => SkinService.deleteSkin(MinecraftPaths.getSkinsDir(), id));
 
-  /** Applies a library skin to the active account via Mojang. */
-  ipcMain.handle('skin-apply', async (_event, skinId: string, model: 'classic' | 'slim') => {
+  /**
+   * Resolves a fresh Minecraft access token for the active Microsoft account:
+   * hydrates it from the encrypted store and silently refreshes when expired.
+   */
+  async function resolvePremiumToken(): Promise<{ token: string } | { error: string }> {
     const settings = SettingsService.getSettings();
     const account = (settings.richAccounts || []).find((a) => a.name === settings.activeAccount);
-
-    if (!account || account.type !== 'microsoft' || !account.accessToken) {
-      return {
-        success: false,
-        error: 'Applying a skin to Mojang needs a signed-in Microsoft account. The skin stays saved in your local library.',
-      };
+    if (!account || account.type !== 'microsoft') {
+      return { error: 'This action needs a signed-in Microsoft account.' };
     }
 
+    const store = getSecureTokenStore();
+    const hydrated = hydrateAccount(account, store?.getTokens(account.name));
+    if (!hydrated.accessToken && !hydrated.refreshToken) {
+      return { error: 'No stored session for this account. Sign in with Microsoft again.' };
+    }
+
+    if (hydrated.accessToken && hydrated.expiresAt && Date.now() < hydrated.expiresAt) {
+      return { token: hydrated.accessToken };
+    }
+
+    const refreshed = await MicrosoftAuthService.refreshAccount(hydrated);
+    store?.setTokens(refreshed.name, {
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken,
+      expiresAt: refreshed.expiresAt,
+    });
+    // Persist any profile changes (name/uuid); saveSettings strips the tokens.
+    SettingsService.saveSettings({
+      ...settings,
+      richAccounts: (settings.richAccounts || []).map((a) => (a.name === account.name ? refreshed : a)),
+    });
+    if (!refreshed.accessToken) {
+      return { error: 'Microsoft did not return a usable session token. Sign in again.' };
+    }
+    return { token: refreshed.accessToken };
+  }
+
+  /** Applies a library skin to the active account via Mojang. */
+  ipcMain.handle('skin-apply', async (_event, skinId: string, model: 'classic' | 'slim') => {
     try {
-      let token = account.accessToken;
-      if (!account.expiresAt || Date.now() >= account.expiresAt) {
-        const refreshed = await MicrosoftAuthService.refreshAccount(account);
-        SettingsService.saveSettings({
-          ...settings,
-          richAccounts: (settings.richAccounts || []).map((a) => (a.name === refreshed.name ? refreshed : a)),
-        });
-        token = refreshed.accessToken || token;
+      const resolved = await resolvePremiumToken();
+      if ('error' in resolved) {
+        return {
+          success: false,
+          error: `${resolved.error} The skin stays saved in your local library.`,
+        };
       }
-      await SkinService.applySkinToAccount(token, MinecraftPaths.getSkinsDir(), skinId, model);
+      await SkinService.applySkinToAccount(resolved.token, MinecraftPaths.getSkinsDir(), skinId, model);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -335,15 +425,12 @@ function setupIpcHandlers() {
 
   /** Pulls the account's currently-worn skin down into the local library. */
   ipcMain.handle('skin-import-active-account', async () => {
-    const settings = SettingsService.getSettings();
-    const account = (settings.richAccounts || []).find((a) => a.name === settings.activeAccount);
-
-    if (!account || account.type !== 'microsoft' || !account.accessToken) {
-      return { success: false, error: 'Sign in with a Microsoft account to import the skin it is currently wearing.' };
-    }
-
     try {
-      const skin = await SkinService.importActiveAccountSkin(account.accessToken, MinecraftPaths.getSkinsDir());
+      const resolved = await resolvePremiumToken();
+      if ('error' in resolved) {
+        return { success: false, error: resolved.error };
+      }
+      const skin = await SkinService.importActiveAccountSkin(resolved.token, MinecraftPaths.getSkinsDir());
       return skin
         ? { success: true, skin }
         : { success: false, error: 'That account is using the default Minecraft skin.' };
