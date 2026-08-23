@@ -47,6 +47,10 @@ build/
 local.properties
 .gradle/configuration-cache/
 
+# electron-builder resources are real sources, not build output
+!/launcher/build/
+/launcher/release/
+
 # Minecraft launcher specific local dirs (for testing)
 /launcher/test-instances/
 /launcher/run/

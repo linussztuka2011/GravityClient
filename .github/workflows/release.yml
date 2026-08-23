@@ -1,0 +1,84 @@
+name: Release
+
+# Builds installers for every desktop platform plus the client-core Fabric mod
+# whenever a version tag (v1.0.0, v1.2.3, ...) is pushed, and attaches all
+# artifacts to a GitHub Release for that tag.
+#
+# Binaries are unsigned (no Apple/Windows signing certificates), so Windows
+# SmartScreen and macOS Gatekeeper will warn on first launch.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  launcher:
+    name: Launcher (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: launcher
+    env:
+      # Never attempt macOS code signing — there is no certificate to find.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, test and build
+        run: |
+          npm run build
+          npm test
+
+      - name: Package installers
+        run: npx electron-builder --publish never
+
+      - name: Attach installers to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            launcher/release/*.AppImage
+            launcher/release/*.deb
+            launcher/release/*.exe
+            launcher/release/*.dmg
+
+  client-core:
+    name: Client-Core Fabric mod
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client-core
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build mod jar
+        run: ./gradlew build --no-daemon
+
+      - name: Attach mod jar to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            client-core/build/libs/gravity-client-core-*.jar
