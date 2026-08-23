@@ -125,7 +125,10 @@ requires — use it rather than a system-wide `gradle`, which may be too new.
   - **Mod-Menu / FPS settings** are written to each profile's `config/gravity-client-core.json`, and the companion mod renders the configured FPS overlay in-game.
 - **Milestone 8 (Secure Token Storage)**: Microsoft/Minecraft session tokens live in a dedicated store encrypted with Electron `safeStorage` (OS-backed key), never in `settings.json` and never in the renderer process; plaintext tokens from older versions are migrated automatically.
 
+- **Milestone 9 (In-Game HUD Modules)**: `client-core` gained a module registry gated on the launcher's toggles. FPS Counter, Ping Display, Direction HUD, Armor Status and Keystrokes now render in-game and stack automatically per screen corner; modules marked **LIVE** in the Mod-Menu are the ones actually drawn.
+
 ### Next Features (Roadmap Phase 3):
-1. **Additional HUD Modules**: Only the FPS Counter is rendered in-game today; the remaining Mod-Menu modules are persisted but not yet implemented in `client-core`.
-2. **Live Launcher ↔ Mod Channel**: Replace the file-based config handoff with a local socket so settings apply without a restart.
-3. **Delta Sync Checks**: Auto-audit local SHA-1 hashes against Modrinth versions on startup to minimize bandwidth.
+1. **Remaining Mod-Menu Modules**: ToggleSprint/Sneak, Potion Effects, Hitbox Display, Zoom and the rest are still launcher-side toggles with no in-game renderer.
+2. **Per-Module Styling**: The launcher only exposes position/colour settings for the FPS Counter; the other modules use a fixed default style.
+3. **Live Launcher ↔ Mod Channel**: Replace the file-based config handoff with a local socket so settings apply without a restart.
+4. **Delta Sync Checks**: Auto-audit local SHA-1 hashes against Modrinth versions on startup to minimize bandwidth.

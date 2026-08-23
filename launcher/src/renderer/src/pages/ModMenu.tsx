@@ -21,17 +21,17 @@ interface ModDef {
 
 export const AVAILABLE_MODS: ModDef[] = [
   { id: 'fps_counter', name: 'FPS Counter', hasSettings: true, liveInGame: true },
-  { id: 'ping_display', name: 'Ping Display' },
+  { id: 'ping_display', name: 'Ping Display', liveInGame: true },
   { id: 'togglesprint', name: 'ToggleSprint/Sneak' },
-  { id: 'direction_hud', name: 'Direction HUD' },
+  { id: 'direction_hud', name: 'Direction HUD', liveInGame: true },
   { id: 'potion_effects', name: 'Potion Effects' },
-  { id: 'armor_status', name: 'Armor Status' },
+  { id: 'armor_status', name: 'Armor Status', liveInGame: true },
   { id: 'hitbox_display', name: 'Hitbox Display' },
   { id: 'item_physics', name: 'Item Physics' },
   { id: 'chat_filters', name: 'Chat Filters' },
   { id: 'skyblock_addons', name: 'Skyblock Addons' },
   { id: 'hypixel_mods', name: 'Hypixel Mods' },
-  { id: 'keystrokes', name: 'Keystrokes' },
+  { id: 'keystrokes', name: 'Keystrokes', liveInGame: true },
   { id: 'zoom', name: 'Zoom' },
   { id: 'item_filters', name: 'Item Filters' },
 ];

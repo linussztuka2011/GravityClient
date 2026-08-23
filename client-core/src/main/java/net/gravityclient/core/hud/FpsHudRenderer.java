@@ -2,11 +2,10 @@ package net.gravityclient.core.hud;
 
 import net.gravityclient.core.config.ClientCoreConfig;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.math.MatrixStack;
 
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 
 /**
@@ -17,11 +16,7 @@ import java.util.Deque;
  * Frames are counted locally rather than read from a client field so the
  * overlay does not depend on mapping details that shift between versions.
  */
-public class FpsHudRenderer {
-    private static final int MARGIN = 4;
-    private static final int PADDING = 3;
-    /** Vanilla's font is 9px tall; this is the reference for the size slider. */
-    private static final float BASE_FONT_HEIGHT = 9.0f;
+public class FpsHudRenderer implements HudModule {
     private static final int AVERAGE_WINDOW_SECONDS = 60;
 
     private final Deque<Integer> history = new ArrayDeque<>();
@@ -30,14 +25,25 @@ public class FpsHudRenderer {
     private int currentFps = 0;
     private int averageFps = 0;
 
-    private ClientCoreConfig config;
-
-    public FpsHudRenderer(ClientCoreConfig config) {
-        this.config = config;
+    @Override
+    public String moduleName() {
+        return "FPS Counter";
     }
 
-    public void setConfig(ClientCoreConfig config) {
-        this.config = config;
+    @Override
+    public boolean requiresPlayer() {
+        // Frame rate is meaningful on menus too.
+        return false;
+    }
+
+    @Override
+    public HudAnchor anchor() {
+        return HudAnchor.TOP_LEFT;
+    }
+
+    /** Anchor comes from the FPS settings screen rather than the default. */
+    public HudAnchor anchorFor(ClientCoreConfig config) {
+        return HudAnchor.parse(config.fps.position, HudAnchor.TOP_LEFT);
     }
 
     private void tickCounters() {
@@ -65,84 +71,31 @@ public class FpsHudRenderer {
         }
     }
 
-    public void render(DrawContext context) {
+    @Override
+    public void render(DrawContext context, MinecraftClient client, ClientCoreConfig config, HudLayout layout) {
+        // Counted every frame, even before the first full second has elapsed.
         tickCounters();
 
-        if (config == null || !config.renderFpsOnHUD) {
+        // Legacy toggle kept alongside the module list for older configs.
+        if (!config.renderFpsOnHUD) {
             return;
         }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.getWindow() == null || client.textRenderer == null) {
-            return;
-        }
-        // Respect the player hiding the HUD with F1.
-        if (client.options != null && client.options.hudHidden) {
-            return;
-        }
-        // Nothing meaningful to show until the first full second has elapsed.
         if (currentFps == 0) {
-            return;
+            return; // Nothing meaningful to show yet.
         }
-
-        ClientCoreConfig.FpsSettings settings = config.fps;
-        TextRenderer textRenderer = client.textRenderer;
 
         String text = "FPS: " + currentFps;
-        if (settings.showAverage) {
+        if (config.fps.showAverage) {
             text = text + " (avg " + averageFps + ")";
         }
 
-        float scale = settings.fontSize / BASE_FONT_HEIGHT;
-        int boxWidth = Math.round(textRenderer.getWidth(text) * scale) + PADDING * 2;
-        int boxHeight = Math.round(BASE_FONT_HEIGHT * scale) + PADDING * 2;
-
-        int screenWidth = client.getWindow().getScaledWidth();
-        int screenHeight = client.getWindow().getScaledHeight();
-
-        int boxX = MARGIN;
-        int boxY = MARGIN;
-        switch (settings.position) {
-            case "TOP_RIGHT":
-                boxX = screenWidth - MARGIN - boxWidth;
-                break;
-            case "BOTTOM_LEFT":
-                boxY = screenHeight - MARGIN - boxHeight;
-                break;
-            case "BOTTOM_RIGHT":
-                boxX = screenWidth - MARGIN - boxWidth;
-                boxY = screenHeight - MARGIN - boxHeight;
-                break;
-            default:
-                // TOP_LEFT keeps the initial margins.
-                break;
-        }
-
-        if (settings.showBackground) {
-            context.fill(
-                boxX,
-                boxY,
-                boxX + boxWidth,
-                boxY + boxHeight,
-                ClientCoreConfig.parseColor(settings.background, settings.backgroundOpacity, 0x000000)
-            );
-        }
-
-        int textColor = settings.useCustomTextColor
-            ? ClientCoreConfig.parseColor(settings.textColor, 100, 0xFFFFFF)
-            : 0xFFFFFFFF;
-
-        // Scale around the origin, so draw coordinates are divided back out.
-        MatrixStack matrices = context.getMatrices();
-        matrices.push();
-        matrices.scale(scale, scale, 1.0f);
-        context.drawTextWithShadow(
-            textRenderer,
-            text,
-            Math.round((boxX + PADDING) / scale),
-            Math.round((boxY + PADDING) / scale),
-            textColor
+        HudPainter.drawLines(
+            context,
+            client,
+            Collections.singletonList(text),
+            HudStyle.fromFpsSettings(config.fps),
+            anchorFor(config),
+            layout
         );
-        matrices.pop();
     }
 }
