@@ -1,7 +1,7 @@
 export interface ModrinthMetadata {
+  /** Stable Modrinth project ID — preferred over the slug, which can be renamed. */
   projectId: string;
   slug: string;
-  versionConstraint: string;
 }
 
 export interface ModHashes {
@@ -19,7 +19,7 @@ export interface ModEntry {
   name: string;
   description: string;
   modrinth: ModrinthMetadata;
-  hashes: ModHashes;
+  hashes?: ModHashes;
   license: ModLicense;
   attribution: string;
 }
@@ -89,6 +89,8 @@ export interface RichAccount {
 export interface GlobalSettings {
   ram: string;
   customJava: string;
+  /** Profile directory whose options.txt seeds new instances; empty disables it. */
+  optionsTemplatePath: string;
   debugMode: boolean;
   activeProfileId: string;
   activeSkin: string;
@@ -151,6 +153,14 @@ export interface SkinEntry {
   addedAt: number;
 }
 
+export interface OptionsTemplateStatus {
+  path: string;
+  configured: boolean;
+  available: boolean;
+  settingCount?: number;
+  problem?: string;
+}
+
 export interface ActionResult<T = unknown> {
   success: boolean;
   canceled?: boolean;
@@ -207,6 +217,10 @@ declare global {
       deleteSkin(id: string): Promise<void>;
       applySkin(skinId: string, model: SkinModel): Promise<ActionResult>;
       importActiveAccountSkin(): Promise<ActionResult>;
+
+      // Settings template copied into new instances
+      getOptionsTemplateStatus(): Promise<OptionsTemplateStatus>;
+      pickOptionsTemplate(): Promise<ActionResult & { status?: OptionsTemplateStatus }>;
 
       // OS integration
       openGameDirectory(instanceId?: string): Promise<ActionResult>;

@@ -23,8 +23,8 @@
     "gravity-client-core.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.15.11",
-    "minecraft": "~1.21",
+    "fabricloader": ">=0.19.5",
+    "minecraft": ">=1.21.11 <1.22",
     "fabric-api": "*"
   }
 }

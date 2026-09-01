@@ -7,7 +7,11 @@ import { MinecraftPaths } from './minecraftPaths.js';
 import { InstanceService } from './instanceService.js';
 import { SettingsService } from './settingsService.js';
 import { syncClientCoreConfig } from './clientConfigService.js';
+import { installClientCore, clientCoreSearchDirs } from './clientCoreInstaller.js';
 import { PackManifest, ModEntry, InstanceConfig } from '../../renderer/src/types/index.js';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export class PackInstaller {
   /**
@@ -78,10 +82,14 @@ export class PackInstaller {
       log(`Downloading mod: ${mod.name} (${mod.id})`, 'info');
       
       try {
+        // Resolve by Modrinth project ID, not our internal id — the two differ
+        // for some mods (FerriteCore's slug is "ferrite-core") and IDs survive
+        // project renames. downloadMod verifies the file against Modrinth's own
+        // published SHA-1 and throws if it does not match.
         await ModrinthService.downloadMod(
-          mod.id,
+          mod.modrinth.projectId,
           modsDir,
-          mod.hashes?.sha1,
+          mod.id,
           (modProgress: number) => {
             const currentPercentage = basePercentage + (modProgress / 100) * (60 / totalMods);
             progress(
@@ -89,20 +97,10 @@ export class PackInstaller {
               `Downloading ${mod.name} (${Math.round(modProgress)}%)`
             );
           },
-          instance.minecraftVersion || '1.21'
+          instance.minecraftVersion || manifest.minecraftVersion
         );
 
-        // Verify SHA-1 if available
-        const modFile = path.join(modsDir, `${mod.id}.jar`);
-        if (mod.hashes?.sha1) {
-          const verified = ModrinthService.verifyHash(modFile, mod.hashes.sha1);
-          if (verified) {
-            log(`Successfully verified integrity of ${mod.id}.jar (SHA1 matched)`, 'info');
-          } else {
-            log(`Hash verification failed for ${mod.id}.jar. Continuing anyway.`, 'warn');
-          }
-        }
-
+        log(`Installed ${mod.name} (verified against Modrinth's published hash).`, 'info');
         modsDownloaded++;
       } catch (err: any) {
         log(`Failed to download ${mod.name}: ${err.message}`, 'error');
@@ -110,12 +108,29 @@ export class PackInstaller {
       }
     }
 
+    // 3b. Install the companion mod. This runs after the mods folder has been
+    // cleaned so the jar is not wiped by the next sync, and it is not part of
+    // the Modrinth queue because it is built here rather than published.
+    progress(72, 'Installing companion mod');
+    const clientCore = installClientCore(
+      modsDir,
+      clientCoreSearchDirs(
+        (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+        __dirname
+      )
+    );
+    if (clientCore.installed) {
+      log(`Installed companion mod: ${clientCore.fileName}`, 'info');
+    } else {
+      log(clientCore.reason ?? 'Companion mod was not installed.', 'warn');
+    }
+
     // 4. Install loader metadata
     progress(75, 'Installing Fabric Loader');
     const loaderOk = await FabricInstaller.installLoader(
       instance.id,
       manifest.modLoaderVersion.replace(/[^0-9.]/g, ''), // strip helper symbols
-      manifest.minecraftVersion || '1.21',
+      instance.minecraftVersion || manifest.minecraftVersion,
       (msg: string, lvl?: 'info' | 'warn' | 'error') => log(msg, lvl || 'info')
     );
     if (!loaderOk) {

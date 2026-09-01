@@ -10,6 +10,7 @@ import { LaunchService } from './services/launchService.js';
 import { MicrosoftAuthService } from './services/microsoftAuthService.js';
 import { ModrinthService } from './services/modrinthService.js';
 import { syncClientCoreConfig } from './services/clientConfigService.js';
+import { inspectOptionsTemplate } from './services/optionsTemplateService.js';
 import * as WorldService from './services/worldService.js';
 import * as ServerService from './services/serverService.js';
 import * as SkinService from './services/skinService.js';
@@ -284,7 +285,12 @@ function setupIpcHandlers() {
       }
     };
     try {
-      const result = await ModrinthService.installModToInstance(instanceId, projectId, mcVersion, onProgress);
+      const result = await ModrinthService.installModToInstance(
+        MinecraftPaths.getInstanceModsDir(instanceId),
+        projectId,
+        mcVersion,
+        onProgress
+      );
       return result;
     } catch (err: any) {
       console.error('Failed to install Modrinth mod:', err.message);
@@ -448,6 +454,29 @@ function setupIpcHandlers() {
     const target = instanceId ? MinecraftPaths.getInstanceDir(instanceId) : MinecraftPaths.getLauncherDataDir();
     const error = await shell.openPath(target);
     return error ? { success: false, error } : { success: true, path: target };
+  });
+
+  /** Reports whether the configured options.txt template can be read. */
+  ipcMain.handle('options-template-status', () =>
+    inspectOptionsTemplate(SettingsService.getSettings().optionsTemplatePath)
+  );
+
+  /** Lets the user pick the profile folder to copy settings from. */
+  ipcMain.handle('options-template-pick', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choose a Minecraft profile to copy settings from',
+      message: 'Pick the profile folder containing options.txt',
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    const chosen = result.filePaths[0];
+    const status = inspectOptionsTemplate(chosen);
+    // Save even when unreadable so the UI can show what is wrong with the pick.
+    SettingsService.saveSettings({ ...SettingsService.getSettings(), optionsTemplatePath: chosen });
+    return { success: status.available, path: chosen, status };
   });
 
   ipcMain.handle('open-external', async (_event, url: string) => {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { GlobalSettings } from '../types/index.js';
+import React, { useEffect, useState } from 'react';
+import { GlobalSettings, OptionsTemplateStatus } from '../types/index.js';
 
 interface SettingsProps {
   settings: GlobalSettings;
@@ -31,6 +31,17 @@ export const Settings: React.FC<SettingsProps> = ({
   // Settings import/export feedback
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMessage, setTransferMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
+
+  // Whether the configured options.txt template can actually be read.
+  const [templateStatus, setTemplateStatus] = useState<OptionsTemplateStatus | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    window.gravityAPI
+      .getOptionsTemplateStatus()
+      .then((s) => { if (!cancelled) setTemplateStatus(s); })
+      .catch(() => { if (!cancelled) setTemplateStatus(null); });
+    return () => { cancelled = true; };
+  }, [settings.optionsTemplatePath]);
 
   // Save specific states back to parent settings
   const handleSaveSubState = (updates: Partial<GlobalSettings>) => {
@@ -174,6 +185,46 @@ export const Settings: React.FC<SettingsProps> = ({
                 value={customJava}
                 onChange={(e) => handleJavaChange(e.target.value)}
               />
+            </div>
+
+            {/* Seed new profiles with an existing options.txt */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Copy settings from an existing profile</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ flex: 1, fontSize: '0.85rem' }}
+                  placeholder="No profile selected — new instances use vanilla defaults"
+                  value={settings.optionsTemplatePath || ''}
+                  onChange={(e) => handleSaveSubState({ optionsTemplatePath: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="pill-btn"
+                  style={{ padding: '0 18px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                  onClick={async () => {
+                    const result = await window.gravityAPI.pickOptionsTemplate();
+                    if (result.canceled) return;
+                    if (result.path) {
+                      handleSaveSubState({ optionsTemplatePath: result.path });
+                    }
+                    setTemplateStatus(result.status ?? null);
+                  }}
+                >
+                  Browse…
+                </button>
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px', lineHeight: 1.5 }}>
+                New profiles start with this profile's <code style={{ fontFamily: 'var(--font-mono)' }}>options.txt</code> —
+                keybinds, FOV, accessibility, video and audio. Existing profiles are never overwritten.
+                {templateStatus?.configured && templateStatus.available && (
+                  <span style={{ color: '#60FFAE' }}> ✓ Found {templateStatus.settingCount} settings.</span>
+                )}
+                {templateStatus?.configured && !templateStatus.available && (
+                  <span style={{ color: 'var(--color-error)' }}> ⚠ {templateStatus.problem}</span>
+                )}
+              </p>
             </div>
 
             {/* Render Distance Slider */}

@@ -3,7 +3,7 @@ package net.gravityclient.core.hud;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix3x2fStack;
 
 import java.util.List;
 
@@ -71,10 +71,12 @@ public final class HudPainter {
             context.fill(boxX, boxY, boxX + boxWidth, boxY + boxHeight, style.backgroundColor);
         }
 
-        // Scaling is applied around the origin, so draw coordinates are divided back out.
-        MatrixStack matrices = context.getMatrices();
-        matrices.push();
-        matrices.scale(scale, scale, 1.0f);
+        // Since 1.21.11 the GUI uses a 2D matrix stack (Matrix3x2fStack) rather
+        // than the old 3D MatrixStack. Scaling is applied around the origin, so
+        // draw coordinates are divided back out.
+        Matrix3x2fStack matrices = context.getMatrices();
+        matrices.pushMatrix();
+        matrices.scale(scale, scale);
 
         int lineHeight = Math.round(HudStyle.BASE_FONT_HEIGHT * scale);
         for (int i = 0; i < lines.size(); i++) {
@@ -89,6 +91,6 @@ public final class HudPainter {
             );
         }
 
-        matrices.pop();
+        matrices.popMatrix();
     }
 }

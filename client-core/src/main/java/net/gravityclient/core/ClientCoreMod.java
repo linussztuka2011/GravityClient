@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.Identifier;
 import net.gravityclient.core.config.ClientCoreConfig;
 import net.gravityclient.core.gui.ClientSettingsScreen;
 import net.gravityclient.core.hud.ArmorStatusHudModule;
@@ -44,12 +45,14 @@ public class ClientCoreMod implements ClientModInitializer {
         // Load config preset state written by launcher
         config = ClientCoreConfig.load();
 
-        // Register custom Right Shift keybind to open settings
+        // Register custom Right Shift keybind to open settings.
+        // Since 1.21.11 the category is a KeyBinding.Category record keyed by an
+        // Identifier rather than a raw translation-key string.
         settingsKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key.gravityclient.settings", // Key description translation key
             InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_RIGHT_SHIFT, // Default key is Right Shift
-            "category.gravityclient.general" // Category translation key
+            KeyBinding.Category.create(Identifier.of(MOD_ID, "general"))
         ));
 
         // Listen for keys pressed to open in-game Client Settings screen
