@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { MinecraftPaths } from './minecraftPaths.js';
+import { downloadFile, verifyHash } from './download.js';
 
 type VersionProfile = Record<string, any>;
 
@@ -84,12 +85,65 @@ export class FabricInstaller {
       fs.mkdirSync(versionFolder, { recursive: true });
       fs.writeFileSync(versionJsonFile, JSON.stringify(resolvedProfile, null, 2), 'utf8');
       log('Fabric and Minecraft metadata verified and saved.', 'info');
+
+      await this.ensureClientJar(versionFolder, versionId, vanillaProfile, log);
       return true;
     } catch (err: any) {
       // A guessed profile can appear to work but fails later with missing
       // libraries or assets. Do not claim the instance is launchable.
       log(`Unable to prepare a verified Fabric profile: ${err.message}`, 'error');
       return false;
+    }
+  }
+
+  /**
+   * Makes sure the Minecraft client jar on disk is the real thing.
+   *
+   * minecraft-launcher-core downloads this jar only when the file is absent,
+   * and its downloader neither verifies the transfer nor cleans up after a
+   * dropped connection. A half-written jar therefore survives every later
+   * launch, and Fabric fails on it with "zip END header not found" while
+   * reading the game jar. Checking Mojang's published SHA-1 up front turns that
+   * permanent breakage into one re-download.
+   */
+  private static async ensureClientJar(
+    versionFolder: string,
+    versionId: string,
+    vanillaProfile: VersionProfile,
+    log: (msg: string, level?: 'info' | 'warn' | 'error') => void
+  ): Promise<void> {
+    const client = vanillaProfile.downloads?.client;
+    if (!client?.url) {
+      // Nothing to verify against; leave the jar to minecraft-launcher-core.
+      return;
+    }
+
+    const jarPath = path.join(versionFolder, `${versionId}.jar`);
+
+    if (fs.existsSync(jarPath)) {
+      if (!client.sha1 || verifyHash(jarPath, client.sha1)) {
+        return;
+      }
+      log('The Minecraft client jar on disk is damaged or incomplete. Replacing it.', 'warn');
+      try {
+        fs.unlinkSync(jarPath);
+      } catch (err: any) {
+        log(`Could not remove the damaged client jar: ${err.message}`, 'error');
+        return;
+      }
+    }
+
+    try {
+      log('Downloading the Minecraft client jar...', 'info');
+      await downloadFile(client.url, jarPath, {
+        sha1: client.sha1,
+        expectedBytes: client.size,
+      });
+      log('Minecraft client jar verified.', 'info');
+    } catch (err: any) {
+      // Leaving it absent is safe: minecraft-launcher-core will try its own
+      // download next, and an absent jar beats a corrupt one either way.
+      log(`Could not download the Minecraft client jar: ${err.message}`, 'warn');
     }
   }
 

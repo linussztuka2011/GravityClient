@@ -52,7 +52,7 @@ export class InstanceService {
       minecraftVersion: mcVersion,
       modLoader: 'fabric',
       // Resolved against Fabric's metadata at launch; this is only the seed value.
-      modLoaderVersion: '0.19.5',
+      modLoaderVersion: '0.19.3',
       enabledModGroups: ['performance', 'hud-qol', 'utility'], // enabled by default
       selectedPreset: 'balanced',
       installedPackVersion: null,

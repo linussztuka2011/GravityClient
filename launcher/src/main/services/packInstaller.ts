@@ -117,7 +117,8 @@ export class PackInstaller {
       clientCoreSearchDirs(
         (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
         __dirname
-      )
+      ),
+      instance.minecraftVersion || manifest.minecraftVersion
     );
     if (clientCore.installed) {
       log(`Installed companion mod: ${clientCore.fileName}`, 'info');

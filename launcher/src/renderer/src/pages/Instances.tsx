@@ -32,13 +32,22 @@ export const Instances: React.FC<InstancesProps> = ({
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
-  const [newProfileVersion, setNewProfileVersion] = useState('1.21');
+  // The pack's version is the only one every mod is known to resolve for.
+  const packVersion = packManifest?.minecraftVersion || '';
+  const [newProfileVersion, setNewProfileVersion] = useState(packVersion || '1.21');
 
   React.useEffect(() => {
-    if (mcVersions && mcVersions.length > 0) {
+    // Default to the version the pack targets rather than whatever Mojang
+    // released most recently: picking the newest one silently produces an
+    // instance no pack mod supports.
+    if (packVersion) {
+      setNewProfileVersion(packVersion);
+    } else if (mcVersions && mcVersions.length > 0) {
       setNewProfileVersion(mcVersions[0].id);
     }
-  }, [mcVersions]);
+  }, [mcVersions, packVersion]);
+
+  const versionMismatch = Boolean(packVersion) && newProfileVersion !== packVersion;
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,6 +314,23 @@ export const Instances: React.FC<InstancesProps> = ({
                   <option value="1.21">1.21 (Fabric)</option>
                 )}
               </select>
+              {versionMismatch && (
+                <div
+                  style={{
+                    marginTop: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 181, 167, 0.12)',
+                    border: '1px solid rgba(255, 181, 167, 0.35)',
+                    color: '#ffb5a7',
+                    fontSize: '0.75rem',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  The mod pack targets Minecraft {packVersion}. On {newProfileVersion} the pack mods
+                  and the in-game settings screen will not be installed.
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
