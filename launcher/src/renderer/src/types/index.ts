@@ -1,7 +1,7 @@
 export interface ModrinthMetadata {
+  /** Stable Modrinth project ID — preferred over the slug, which can be renamed. */
   projectId: string;
   slug: string;
-  versionConstraint: string;
 }
 
 export interface ModHashes {
@@ -19,7 +19,7 @@ export interface ModEntry {
   name: string;
   description: string;
   modrinth: ModrinthMetadata;
-  hashes: ModHashes;
+  hashes?: ModHashes;
   license: ModLicense;
   attribution: string;
 }

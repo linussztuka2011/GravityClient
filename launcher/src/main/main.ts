@@ -284,7 +284,12 @@ function setupIpcHandlers() {
       }
     };
     try {
-      const result = await ModrinthService.installModToInstance(instanceId, projectId, mcVersion, onProgress);
+      const result = await ModrinthService.installModToInstance(
+        MinecraftPaths.getInstanceModsDir(instanceId),
+        projectId,
+        mcVersion,
+        onProgress
+      );
       return result;
     } catch (err: any) {
       console.error('Failed to install Modrinth mod:', err.message);
