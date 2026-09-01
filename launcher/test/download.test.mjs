@@ -14,15 +14,12 @@ import * as crypto from 'node:crypto';
  * Nothing caught it because the manifest's SHA-1 values were fabricated and
  * verification never really ran. These tests pin the fixed behaviour.
  *
- * downloadFile is private, so the tests drive it through the public
- * verifyHash + a local HTTP server via downloadMod's own helper path.
+ * It now also backs the Minecraft client jar, which is why it moved out of
+ * ModrinthService into its own module.
  */
 
 const OUT = new URL('../out/main/services/', import.meta.url).href;
-const { ModrinthService } = await import(`${OUT}modrinthService.js`);
-
-// downloadFile is private; reach it the same way the class does internally.
-const downloadFile = (ModrinthService)['downloadFile'].bind(ModrinthService);
+const { downloadFile, verifyHash } = await import(`${OUT}download.js`);
 
 function tempDir(label) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `gravity-${label}-`));
@@ -57,7 +54,7 @@ test('download: writes a large file completely before resolving', async () => {
   await downloadFile(url, dest);
 
   assert.equal(fs.statSync(dest).size, body.length, 'file on disk must be complete when the promise resolves');
-  assert.ok(ModrinthService.verifyHash(dest, expected), 'contents must hash-match the served bytes');
+  assert.ok(verifyHash(dest, expected), 'contents must hash-match the served bytes');
 });
 
 test('download: small files still work', async () => {
@@ -75,7 +72,7 @@ test('download: reports progress up to 100%', async () => {
   const dest = path.join(tempDir('dl-progress'), 'mod.jar');
 
   const seen = [];
-  await downloadFile(url, dest, (p) => seen.push(p));
+  await downloadFile(url, dest, { onProgress: (p) => seen.push(p) });
 
   assert.ok(seen.length > 1, 'progress should be reported more than once');
   assert.equal(seen.at(-1), 100, 'final progress should reach 100');
@@ -104,8 +101,8 @@ test('verifyHash: detects a corrupted file', () => {
   fs.writeFileSync(file, 'hello world');
 
   const good = crypto.createHash('sha1').update('hello world').digest('hex');
-  assert.ok(ModrinthService.verifyHash(file, good));
-  assert.ok(ModrinthService.verifyHash(file, good.toUpperCase()), 'comparison is case-insensitive');
-  assert.equal(ModrinthService.verifyHash(file, 'deadbeef'.repeat(5)), false);
-  assert.equal(ModrinthService.verifyHash(path.join(dir, 'missing.jar'), good), false);
+  assert.ok(verifyHash(file, good));
+  assert.ok(verifyHash(file, good.toUpperCase()), 'comparison is case-insensitive');
+  assert.equal(verifyHash(file, 'deadbeef'.repeat(5)), false);
+  assert.equal(verifyHash(path.join(dir, 'missing.jar'), good), false);
 });
