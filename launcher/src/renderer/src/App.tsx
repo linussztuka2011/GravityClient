@@ -16,6 +16,7 @@ import { InstanceConfig, PackManifest, TaskStatus, LogEntry, GlobalSettings, McV
 const DEFAULT_SETTINGS: GlobalSettings = {
   ram: '4G',
   customJava: '',
+  optionsTemplatePath: '',
   debugMode: false,
   activeProfileId: '',
   activeSkin: '',

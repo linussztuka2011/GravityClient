@@ -39,6 +39,14 @@
       {
         "from": "../packs",
         "to": "packs"
+      },
+      {
+        "from": "../client-core/build/libs",
+        "to": "client-core",
+        "filter": [
+          "gravity-client-core-*.jar",
+          "!*-sources.jar"
+        ]
       }
     ],
     "win": {

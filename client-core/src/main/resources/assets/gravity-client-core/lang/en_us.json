@@ -1,4 +1,4 @@
 {
   "key.gravityclient.settings": "Open Client Settings",
-  "category.gravityclient.general": "GravityClient"
+  "key.category.gravity-client-core.general": "GravityClient"
 }

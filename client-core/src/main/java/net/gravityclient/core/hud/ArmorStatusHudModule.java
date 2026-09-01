@@ -70,7 +70,7 @@ public class ArmorStatusHudModule implements HudModule {
             int y = top + i * (SLOT + GAP);
             context.drawItem(stack, x, y);
             // Draws the stack count and the durability bar over the icon.
-            context.drawItemInSlot(client.textRenderer, stack, x, y);
+            context.drawStackOverlay(client.textRenderer, stack, x, y);
         }
     }
 }

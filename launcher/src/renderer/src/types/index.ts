@@ -89,6 +89,8 @@ export interface RichAccount {
 export interface GlobalSettings {
   ram: string;
   customJava: string;
+  /** Profile directory whose options.txt seeds new instances; empty disables it. */
+  optionsTemplatePath: string;
   debugMode: boolean;
   activeProfileId: string;
   activeSkin: string;
@@ -151,6 +153,14 @@ export interface SkinEntry {
   addedAt: number;
 }
 
+export interface OptionsTemplateStatus {
+  path: string;
+  configured: boolean;
+  available: boolean;
+  settingCount?: number;
+  problem?: string;
+}
+
 export interface ActionResult<T = unknown> {
   success: boolean;
   canceled?: boolean;
@@ -207,6 +217,10 @@ declare global {
       deleteSkin(id: string): Promise<void>;
       applySkin(skinId: string, model: SkinModel): Promise<ActionResult>;
       importActiveAccountSkin(): Promise<ActionResult>;
+
+      // Settings template copied into new instances
+      getOptionsTemplateStatus(): Promise<OptionsTemplateStatus>;
+      pickOptionsTemplate(): Promise<ActionResult & { status?: OptionsTemplateStatus }>;
 
       // OS integration
       openGameDirectory(instanceId?: string): Promise<ActionResult>;

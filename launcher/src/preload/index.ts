@@ -87,6 +87,10 @@ contextBridge.exposeInMainWorld('gravityAPI', {
   applySkin: (skinId: string, model: 'classic' | 'slim') => ipcRenderer.invoke('skin-apply', skinId, model),
   importActiveAccountSkin: () => ipcRenderer.invoke('skin-import-active-account'),
 
+  // Settings template copied into new instances
+  getOptionsTemplateStatus: () => ipcRenderer.invoke('options-template-status'),
+  pickOptionsTemplate: () => ipcRenderer.invoke('options-template-pick'),
+
   // OS integration
   openGameDirectory: (instanceId?: string) => ipcRenderer.invoke('open-game-directory', instanceId),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),

@@ -15,6 +15,8 @@ export interface RichAccount {
 export interface GlobalSettings {
   ram: string;
   customJava: string;
+  /** Profile directory whose options.txt seeds new instances; empty disables it. */
+  optionsTemplatePath: string;
   debugMode: boolean;
   activeProfileId: string;
   activeSkin: string;
@@ -37,6 +39,9 @@ export interface GlobalSettings {
 const DEFAULT_SETTINGS: GlobalSettings = {
   ram: '4G',
   customJava: '',
+  // Empty means "use vanilla defaults"; set it in Settings > Video & JRE.
+  optionsTemplatePath: '',
+
   debugMode: false,
   activeProfileId: '',
   // Holds a skin library id once the user picks one; empty means "default skin".

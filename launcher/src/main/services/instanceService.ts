@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import { join } from 'path';
 import { MinecraftPaths } from './minecraftPaths.js';
+import { SettingsService } from './settingsService.js';
+import { applyOptionsTemplate } from './optionsTemplateService.js';
 import { InstanceConfig } from '../../renderer/src/types/index.js';
 
 export class InstanceService {
@@ -49,7 +51,8 @@ export class InstanceService {
       name,
       minecraftVersion: mcVersion,
       modLoader: 'fabric',
-      modLoaderVersion: '0.15.11',
+      // Resolved against Fabric's metadata at launch; this is only the seed value.
+      modLoaderVersion: '0.19.5',
       enabledModGroups: ['performance', 'hud-qol', 'utility'], // enabled by default
       selectedPreset: 'balanced',
       installedPackVersion: null,
@@ -57,6 +60,17 @@ export class InstanceService {
     };
 
     fs.writeFileSync(join(instDir, 'instance.json'), JSON.stringify(config, null, 2), 'utf8');
+
+    // Seed the profile with the player's own options.txt (keybinds, FOV,
+    // accessibility, video/audio) so a new instance does not start from vanilla
+    // defaults. Purely best-effort — the profile is fine without it.
+    const template = SettingsService.getSettings().optionsTemplatePath;
+    const seeded = applyOptionsTemplate(instDir, template);
+    if (seeded.copied) {
+      console.log(`[InstanceService] Seeded ${config.name} with ${seeded.settingCount} settings from the options template.`);
+    } else if (template) {
+      console.warn(`[InstanceService] Did not seed options.txt: ${seeded.reason}`);
+    }
 
     const list = this.getInstances().map(c => c.id);
     list.push(id);

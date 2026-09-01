@@ -7,7 +7,11 @@ import { MinecraftPaths } from './minecraftPaths.js';
 import { InstanceService } from './instanceService.js';
 import { SettingsService } from './settingsService.js';
 import { syncClientCoreConfig } from './clientConfigService.js';
+import { installClientCore, clientCoreSearchDirs } from './clientCoreInstaller.js';
 import { PackManifest, ModEntry, InstanceConfig } from '../../renderer/src/types/index.js';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export class PackInstaller {
   /**
@@ -104,12 +108,29 @@ export class PackInstaller {
       }
     }
 
+    // 3b. Install the companion mod. This runs after the mods folder has been
+    // cleaned so the jar is not wiped by the next sync, and it is not part of
+    // the Modrinth queue because it is built here rather than published.
+    progress(72, 'Installing companion mod');
+    const clientCore = installClientCore(
+      modsDir,
+      clientCoreSearchDirs(
+        (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+        __dirname
+      )
+    );
+    if (clientCore.installed) {
+      log(`Installed companion mod: ${clientCore.fileName}`, 'info');
+    } else {
+      log(clientCore.reason ?? 'Companion mod was not installed.', 'warn');
+    }
+
     // 4. Install loader metadata
     progress(75, 'Installing Fabric Loader');
     const loaderOk = await FabricInstaller.installLoader(
       instance.id,
       manifest.modLoaderVersion.replace(/[^0-9.]/g, ''), // strip helper symbols
-      manifest.minecraftVersion || '1.21',
+      instance.minecraftVersion || manifest.minecraftVersion,
       (msg: string, lvl?: 'info' | 'warn' | 'error') => log(msg, lvl || 'info')
     );
     if (!loaderOk) {
