@@ -22,8 +22,9 @@ public abstract class TitleScreenMixin extends Screen {
         // Only draw if enabled in our synchronized preset configurations
         if (ClientCoreMod.getConfig() != null && ClientCoreMod.getConfig().enableBranding) {
             String text = "GravityClient v1.0.0 (Synced)";
-            // Render text in the top-left of the title screen with our electric cyan color
-            context.drawTextWithShadow(this.textRenderer, text, 6, 6, 0x66FCF1);
+            // Electric cyan, opaque. The alpha byte is not optional: DrawContext
+            // skips the draw entirely when a colour's alpha is zero.
+            context.drawTextWithShadow(this.textRenderer, text, 6, 6, 0xFF66FCF1);
         }
     }
 }
